@@ -1,0 +1,114 @@
+services:
+  # MySQL Database for structured data (listings, prices, capacities)
+  mysql:
+    image: mysql:8.0
+    container_name: airbnb_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: airbnb_analytics
+      MYSQL_USER: airbnb_user
+      MYSQL_PASSWORD: airbnb_pass
+    ports:
+      - "3306:3306"   # <--- maps host port 3307 to container's internal 3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init:/docker-entrypoint-initdb.d
+    networks:
+      - airbnb_network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # MongoDB Cluster Node 1 (Primary)
+  mongo1:
+    image: mongo:6.0
+    container_name: mongo1
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo1_data:/data/db
+      - ./mongo/init:/docker-entrypoint-initdb.d
+    networks:
+      - airbnb_network
+    command: mongod --replSet rs0 --bind_ip_all --noauth
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo1:27017',priority:3},{_id:1,host:'mongo2:27017',priority:2},{_id:2,host:'mongo3:27017',priority:1}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
+
+  # MongoDB Cluster Node 2 (Secondary)
+  mongo2:
+    image: mongo:6.0
+    container_name: mongo2
+    restart: always
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo2_data:/data/db
+    networks:
+      - airbnb_network
+    command: mongod --replSet rs0 --bind_ip_all --noauth
+    depends_on:
+      - mongo1
+
+  # MongoDB Cluster Node 3 (Secondary)
+  mongo3:
+    image: mongo:6.0
+    container_name: mongo3
+    restart: always
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo3_data:/data/db
+    networks:
+      - airbnb_network
+    command: mongod --replSet rs0 --bind_ip_all --noauth
+    depends_on:
+      - mongo1
+
+  # MongoDB Express (Web UI for MongoDB) - Connected to Primary
+  mongo_express:
+    image: mongo-express:latest
+    container_name: airbnb_mongo_express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: true
+      ME_CONFIG_MONGODB_SERVER: mongo1
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH: false
+    networks:
+      - airbnb_network
+    depends_on:
+      - mongo1
+
+  # phpMyAdmin (Web UI for MySQL)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: airbnb_phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: airbnb_user
+      PMA_PASSWORD: airbnb_pass
+    networks:
+      - airbnb_network
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
+
+networks:
+  airbnb_network:
+    driver: bridge 

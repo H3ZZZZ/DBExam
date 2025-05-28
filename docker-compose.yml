@@ -10,7 +10,7 @@ services:
       MYSQL_USER: airbnb_user
       MYSQL_PASSWORD: airbnb_pass
     ports:
-      - "3306:3306"   # <--- maps host port 3307 to container's internal 3306
+      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./sql/init:/docker-entrypoint-initdb.d

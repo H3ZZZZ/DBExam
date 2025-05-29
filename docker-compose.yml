@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.9"
 
 services:
   mysql:
@@ -19,52 +19,93 @@ services:
     networks:
       - airbnb_network
     command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "airbnb_user", "-pairbnb_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   mongo1:
     image: mongo:6.0
     container_name: mongo1
-    restart: always
+    hostname: mongo1
     ports:
       - "27017:27017"
+    command: mongod --replSet rs0 --bind_ip_all
     volumes:
       - mongo1_data:/data/db
-      - ./mongo/init:/docker-entrypoint-initdb.d
     networks:
       - airbnb_network
-    command: mongod --replSet rs0 --bind_ip_all --noauth
     healthcheck:
-      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo1:27017',priority:3},{_id:1,host:'mongo2:27017',priority:2},{_id:2,host:'mongo3:27017',priority:1}]}) }" | mongosh --port 27017 --quiet
+      test: ["CMD", "sh", "-c", "echo 'db.runCommand({ ping: 1 }).ok' | mongosh --quiet"]
       interval: 5s
-      timeout: 30s
+      timeout: 5s
       retries: 30
+      start_period: 10s
 
   mongo2:
     image: mongo:6.0
     container_name: mongo2
-    restart: always
+    hostname: mongo2
     ports:
       - "27018:27017"
+    command: mongod --replSet rs0 --bind_ip_all
     volumes:
       - mongo2_data:/data/db
     networks:
       - airbnb_network
-    command: mongod --replSet rs0 --bind_ip_all --noauth
-    depends_on:
-      - mongo1
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'db.runCommand({ ping: 1 }).ok' | mongosh --quiet"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   mongo3:
     image: mongo:6.0
     container_name: mongo3
-    restart: always
+    hostname: mongo3
     ports:
       - "27019:27017"
+    command: mongod --replSet rs0 --bind_ip_all
     volumes:
       - mongo3_data:/data/db
     networks:
       - airbnb_network
-    command: mongod --replSet rs0 --bind_ip_all --noauth
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'db.runCommand({ ping: 1 }).ok' | mongosh --quiet"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  # MongoDB Initialization Service - Runs once to set up replica set and data
+  mongo_init:
+    image: mongo:6.0
+    container_name: mongo_init
     depends_on:
-      - mongo1
+      mongo1:
+        condition: service_healthy
+      mongo2:
+        condition: service_healthy
+      mongo3:
+        condition: service_healthy
+    networks:
+      - airbnb_network
+    volumes:
+      - ./mongo/init:/init
+    entrypoint: [ "/bin/bash", "-c" ]
+    command: >
+      "
+      echo 'Waiting for all nodes...' &&
+      until mongosh --host mongo1 --eval 'db.runCommand({ ping: 1 })' --quiet; do sleep 2; done &&
+      until mongosh --host mongo2 --eval 'db.runCommand({ ping: 1 })' --quiet; do sleep 2; done &&
+      until mongosh --host mongo3 --eval 'db.runCommand({ ping: 1 })' --quiet; do sleep 2; done &&
+      echo 'All nodes up. Running init script.' &&
+      mongosh --host mongo1 /init/init.js
+      "
+    restart: "no"
 
   mongo_express:
     image: mongo-express:latest
@@ -80,7 +121,8 @@ services:
     networks:
       - airbnb_network
     depends_on:
-      - mongo1
+      mongo1:
+        condition: service_healthy
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
@@ -96,7 +138,8 @@ services:
     networks:
       - airbnb_network
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
 volumes:
   mysql_data:

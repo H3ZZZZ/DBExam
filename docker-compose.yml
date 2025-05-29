@@ -94,6 +94,7 @@ services:
       - airbnb_network
     volumes:
       - ./mongo/init:/init
+      - ./cleaned_airbnb_data.csv:/data/cleaned_airbnb_data.csv
     entrypoint: [ "/bin/bash", "-c" ]
     command: >
       "

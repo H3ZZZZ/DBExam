@@ -77,62 +77,111 @@ try {
 // Check existing data
 var existingCount = db.reviews.countDocuments();
 if (existingCount > 0) {
-  print("Database already has", existingCount, "reviews - skipping data insertion");
-} else {
-  print("Inserting sample data...");
-  
-  // Create indexes
-  db.reviews.createIndex({ "property_id": 1 });
-  db.reviews.createIndex({ "cleanliness_rating": 1 });
-  db.reviews.createIndex({ "guest_satisfaction": 1 });
-  db.reviews.createIndex({ "created_at": 1 });
-  
-  // Insert sample reviews
-  var reviews = [
-    {
-      property_id: 1,
-      cleanliness_rating: 5,
-      guest_satisfaction: 5,
-      text_comment: "Amazing waterfront property! The views were breathtaking and the amenities were top-notch.",
-      created_at: new Date("2024-01-15")
-    },
-    {
-      property_id: 2,
-      cleanliness_rating: 4,
-      guest_satisfaction: 4,
-      text_comment: "Great downtown location, but a bit noisy at night. Overall a good stay.",
-      created_at: new Date("2024-01-20")
-    },
-    {
-      property_id: 3,
-      cleanliness_rating: 5,
-      guest_satisfaction: 5,
-      text_comment: "Perfect mountain retreat! Peaceful and well-equipped for a relaxing getaway.",
-      created_at: new Date("2024-02-01")
-    },
-    {
-      property_id: 4,
-      cleanliness_rating: 3,
-      guest_satisfaction: 3,
-      text_comment: "The location was good but the property needed some maintenance updates.",
-      created_at: new Date("2024-02-10")
-    },
-    {
-      property_id: 5,
-      cleanliness_rating: 5,
-      guest_satisfaction: 5,
-      text_comment: "Stunning beachfront location! Could hear the waves from the bedroom. Highly recommend!",
-      created_at: new Date("2024-02-15")
-    }
-  ];
-  
-  var insertResult = db.reviews.insertMany(reviews);
-  print("Inserted", insertResult.insertedIds.length, "sample reviews");
+  print("Database already has", existingCount, "reviews - clearing for fresh CSV data import");
+  db.reviews.deleteMany({});
 }
 
-print("MongoDB initialization complete");
+print("Generating reviews for all properties from CSV data...");
+
+// Create indexes
+db.reviews.createIndex({ "property_id": 1 });
+db.reviews.createIndex({ "cleanliness_rating": 1 });
+db.reviews.createIndex({ "guest_satisfaction": 1 });
+db.reviews.createIndex({ "created_at": 1 });
+
+// Define 5 cycling review comments
+var cyclingComments = [
+  "Excellent property with great amenities! The location was perfect and the host was very responsive.",
+  "Good value for money. The place was clean and comfortable. Would definitely stay again.",
+  "Amazing experience! Everything was exactly as described. Highly recommend this property.",
+  "Nice place but could use some minor improvements. Overall a pleasant stay with good facilities.",
+  "Outstanding property! Beautiful location and well-maintained. Perfect for our vacation needs."
+];
+
+// Function to read and parse CSV file
+function loadCSVProperties() {
+  try {
+    print("Loading properties from CSV file...");
+    
+    // Use fs module to read the CSV file
+    const fs = require('fs');
+    var csvContent = fs.readFileSync("/data/cleaned_airbnb_data.csv", "utf8");
+    var lines = csvContent.split('\n');
+    var dataLines = lines.slice(1).filter(function(line) { return line.trim().length > 0; });
+    var properties = [];
+    
+    dataLines.forEach(function(line, index) {
+      var columns = line.split(',');
+      if (columns.length < 11) return;
+      
+      try {
+        var property = {
+          ID: parseInt(columns[0]),
+          cleanliness_rating: parseInt(columns[4]),
+          guest_satisfaction_overall: parseInt(columns[5])
+        };
+        
+        if (!isNaN(property.ID) && !isNaN(property.cleanliness_rating) && !isNaN(property.guest_satisfaction_overall)) {
+          properties.push(property);
+        }
+      } catch (e) {
+        print("Skipping line " + (index + 2) + " due to parsing error");
+      }
+    });
+    
+    print("Successfully loaded", properties.length, "properties from CSV");
+    return properties;
+    
+  } catch (e) {
+    print("Error loading CSV file:", e.message);
+    print("Falling back to sample data...");
+    return [
+      {ID: 1, cleanliness_rating: 100, guest_satisfaction_overall: 93},
+      {ID: 2, cleanliness_rating: 80, guest_satisfaction_overall: 85},
+      {ID: 3, cleanliness_rating: 90, guest_satisfaction_overall: 87},
+      {ID: 4, cleanliness_rating: 90, guest_satisfaction_overall: 90},
+      {ID: 5, cleanliness_rating: 100, guest_satisfaction_overall: 98}
+    ];
+  }
+}
+
+var csvProperties = loadCSVProperties();
+print("Processing", csvProperties.length, "properties from CSV data...");
+
+// Generate reviews for each property
+var totalInserted = 0;
+var baseDate = new Date("2024-01-01");
+
+csvProperties.forEach(function(property, propertyIndex) {
+  var commentIndex = propertyIndex % cyclingComments.length;
+  var cleanlinessRating = property.cleanliness_rating;
+  var guestSatisfaction = property.guest_satisfaction_overall;
+  var reviewDate = new Date(baseDate.getTime() + propertyIndex * 24 * 60 * 60 * 1000);
+  
+  var review = {
+    property_id: property.ID,
+    cleanliness_rating: cleanlinessRating,
+    guest_satisfaction: guestSatisfaction,
+    text_comment: cyclingComments[commentIndex],
+    created_at: reviewDate
+  };
+  
+  db.reviews.insertOne(review);
+  totalInserted++;
+  
+  if ((propertyIndex + 1) % 1000 === 0) {
+    print("Processed", propertyIndex + 1, "properties -", totalInserted, "reviews inserted");
+  }
+});
+
+print("Review generation complete!");
+print("Total reviews inserted:", totalInserted);
+print("Properties covered:", csvProperties.length);
+print("Reviews per property: 1 (cycling through 5 comment types)");
+
+print("\nMongoDB initialization complete");
 print("Database: airbnb_reviews");
 print("Collection: reviews");
-print("Documents:", db.reviews.countDocuments());
+print("Total documents:", db.reviews.countDocuments());
 print("Replica set: rs0 ready");
 

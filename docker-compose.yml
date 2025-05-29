@@ -15,7 +15,6 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./sql/init:/docker-entrypoint-initdb.d
-      - ./sql/init/cleaned_airbnb_data.csv:/var/lib/mysql-files/cleaned_airbnb_data.csv
     networks:
       - airbnb_network
     command: --default-authentication-plugin=mysql_native_password

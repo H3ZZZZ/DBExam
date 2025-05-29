@@ -1,5 +1,5 @@
 server:
-  port: 8082  # You can change this if 8080 is busy
+  port: 8082
 
 spring:
   datasource:
@@ -10,10 +10,10 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none  # Or "update" during dev to auto-create schema
+      ddl-auto: none
     show-sql: true
     database-platform: org.hibernate.dialect.MySQLDialect
 
   data:
     mongodb:
-      uri: mongodb://localhost:27017/airbnb
+      uri: mongodb://localhost:27017/airbnb_reviews

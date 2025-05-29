@@ -1,7 +1,17 @@
-// 🌟 Airbnb Analytics Platform - MongoDB Initialization
-// Smart initialization script that handles fresh deployments and existing data
+// Airbnb Analytics Platform - Optimized MongoDB Initialization
+// High-performance initialization script with batch processing
 
 print("Starting MongoDB replica set initialization...");
+
+// Performance tracking
+var startTime = new Date();
+var timingMarks = {};
+
+function markTime(label) {
+  timingMarks[label] = new Date();
+  var elapsed = timingMarks[label] - startTime;
+  print(label + ": " + elapsed + "ms");
+}
 
 try {
   // Initialize replica set
@@ -23,9 +33,11 @@ try {
   }
 }
 
+markTime("Replica set setup");
+
 // Wait for replica set to elect primary and be ready for writes
 print("Waiting for replica set primary election...");
-var timeout = 60; // 1 minute timeout
+var timeout = 60;
 var primaryReady = false;
 
 while (timeout > 0 && !primaryReady) {
@@ -34,7 +46,6 @@ while (timeout > 0 && !primaryReady) {
     if (status.ok === 1) {
       var primary = status.members.find(m => m.stateStr === 'PRIMARY');
       if (primary) {
-        // Test write capability
         try {
           db.getSiblingDB('test').testWrite.insertOne({test: new Date()});
           db.getSiblingDB('test').testWrite.drop();
@@ -60,11 +71,12 @@ if (!primaryReady) {
   quit(1);
 }
 
+markTime("Primary election");
+
 // Setup reviews database
 print("Setting up reviews database...");
 db = db.getSiblingDB('airbnb_reviews');
 
-// Create collection if needed
 try {
   db.createCollection('reviews');
   print("Created reviews collection");
@@ -78,18 +90,27 @@ try {
 var existingCount = db.reviews.countDocuments();
 if (existingCount > 0) {
   print("Database already has", existingCount, "reviews - clearing for fresh CSV data import");
+  var deleteStart = new Date();
   db.reviews.deleteMany({});
+  var deleteTime = new Date() - deleteStart;
+  print("Cleared", existingCount, "documents in", deleteTime, "ms");
 }
 
-print("Generating reviews for all properties from CSV data...");
+print("Generating reviews with optimized batch processing...");
 
-// Create indexes
+// Create indexes before data loading
+print("Creating indexes...");
+var indexStart = new Date();
 db.reviews.createIndex({ "property_id": 1 });
 db.reviews.createIndex({ "cleanliness_rating": 1 });
 db.reviews.createIndex({ "guest_satisfaction": 1 });
 db.reviews.createIndex({ "created_at": 1 });
+var indexTime = new Date() - indexStart;
+print("Indexes created in", indexTime, "ms");
 
-// Define 5 cycling review comments
+markTime("Database setup");
+
+// Generic comments for reviews
 var cyclingComments = [
   "Excellent property with great amenities! The location was perfect and the host was very responsive.",
   "Good value for money. The place was clean and comfortable. Would definitely stay again.",
@@ -98,38 +119,52 @@ var cyclingComments = [
   "Outstanding property! Beautiful location and well-maintained. Perfect for our vacation needs."
 ];
 
-// Function to read and parse CSV file
-function loadCSVProperties() {
+var commentsLength = cyclingComments.length;
+var baseDate = new Date("2024-01-01");
+var baseDateMs = baseDate.getTime();
+var dayInMs = 24 * 60 * 60 * 1000;
+
+// Load properties from CSV file - previously used insertOne but this is more efficient
+function loadCSVPropertiesOptimized() {
   try {
     print("Loading properties from CSV file...");
+    var loadStart = new Date();
     
-    // Use fs module to read the CSV file
     const fs = require('fs');
     var csvContent = fs.readFileSync("/data/cleaned_airbnb_data.csv", "utf8");
     var lines = csvContent.split('\n');
     var dataLines = lines.slice(1).filter(function(line) { return line.trim().length > 0; });
     var properties = [];
     
-    dataLines.forEach(function(line, index) {
+    properties.length = dataLines.length;
+    var validCount = 0;
+    
+    dataLines.forEach(function(line) {
       var columns = line.split(',');
       if (columns.length < 11) return;
       
       try {
-        var property = {
-          ID: parseInt(columns[0]),
-          cleanliness_rating: parseInt(columns[4]),
-          guest_satisfaction_overall: parseInt(columns[5])
-        };
+        var id = parseInt(columns[0]);
+        var cleanliness = parseInt(columns[4]);
+        var satisfaction = parseInt(columns[5]);
         
-        if (!isNaN(property.ID) && !isNaN(property.cleanliness_rating) && !isNaN(property.guest_satisfaction_overall)) {
-          properties.push(property);
+        if (!isNaN(id) && !isNaN(cleanliness) && !isNaN(satisfaction)) {
+          properties[validCount] = {
+            ID: id,
+            cleanliness_rating: cleanliness,
+            guest_satisfaction_overall: satisfaction
+          };
+          validCount++;
         }
       } catch (e) {
-        print("Skipping line " + (index + 2) + " due to parsing error");
+        print("Error processing line:", e.message);
       }
     });
     
-    print("Successfully loaded", properties.length, "properties from CSV");
+    properties.length = validCount;
+    
+    var loadTime = new Date() - loadStart;
+    print("Successfully loaded", validCount, "properties from CSV in", loadTime, "ms");
     return properties;
     
   } catch (e) {
@@ -145,43 +180,86 @@ function loadCSVProperties() {
   }
 }
 
-var csvProperties = loadCSVProperties();
-print("Processing", csvProperties.length, "properties from CSV data...");
+var csvProperties = loadCSVPropertiesOptimized();
+markTime("CSV loading");
 
-// Generate reviews for each property
+print("Processing", csvProperties.length, "properties with batch inserts...");
+
+// Optimized batch processing
+var batchSize = 1000;
+var batch = [];
 var totalInserted = 0;
-var baseDate = new Date("2024-01-01");
+var insertStart = new Date();
+
+batch.length = batchSize;
+var batchIndex = 0;
 
 csvProperties.forEach(function(property, propertyIndex) {
-  var commentIndex = propertyIndex % cyclingComments.length;
-  var cleanlinessRating = property.cleanliness_rating;
-  var guestSatisfaction = property.guest_satisfaction_overall;
-  var reviewDate = new Date(baseDate.getTime() + propertyIndex * 24 * 60 * 60 * 1000);
-  
   var review = {
     property_id: property.ID,
-    cleanliness_rating: cleanlinessRating,
-    guest_satisfaction: guestSatisfaction,
-    text_comment: cyclingComments[commentIndex],
-    created_at: reviewDate
+    cleanliness_rating: property.cleanliness_rating,
+    guest_satisfaction: property.guest_satisfaction_overall,
+    text_comment: cyclingComments[propertyIndex % commentsLength],
+    created_at: new Date(baseDateMs + propertyIndex * dayInMs)
   };
   
-  db.reviews.insertOne(review);
-  totalInserted++;
+  batch[batchIndex] = review;
+  batchIndex++;
   
-  if ((propertyIndex + 1) % 1000 === 0) {
-    print("Processed", propertyIndex + 1, "properties -", totalInserted, "reviews inserted");
+  // Insert batch when full
+  if (batchIndex >= batchSize) {
+    batch.length = batchIndex;
+    
+    var batchStart = new Date();
+    db.reviews.insertMany(batch, {ordered: false, writeConcern: {w: 1, j: false}});
+    var batchTime = new Date() - batchStart;
+    
+    totalInserted += batchIndex;
+    
+    print("Inserted batch:", totalInserted, "total reviews (" + batchTime + "ms for", batchIndex, "docs,", 
+          Math.round(batchIndex / (batchTime / 1000)), "docs/sec)");
+    
+    // Reset batch
+    batch = [];
+    batch.length = batchSize;
+    batchIndex = 0;
   }
 });
 
-print("Review generation complete!");
+// Insert remaining records
+if (batchIndex > 0) {
+  batch.length = batchIndex;
+  var finalBatchStart = new Date();
+  db.reviews.insertMany(batch, {ordered: false, writeConcern: {w: 1, j: false}});
+  var finalBatchTime = new Date() - finalBatchStart;
+  
+  totalInserted += batchIndex;
+  print("Inserted final batch:", totalInserted, "total reviews (" + finalBatchTime + "ms for", batchIndex, "docs)");
+}
+
+var totalInsertTime = new Date() - insertStart;
+markTime("Data insertion");
+
+// Performance summary
+print("\nPERFORMANCE SUMMARY:");
 print("Total reviews inserted:", totalInserted);
 print("Properties covered:", csvProperties.length);
-print("Reviews per property: 1 (cycling through 5 comment types)");
+print("Reviews per property: 1 (cycling through", commentsLength, "comment types)");
+print("Total insertion time:", totalInsertTime, "ms");
+print("Average insertion rate:", Math.round(totalInserted / (totalInsertTime / 1000)), "docs/sec");
+print("Total script runtime:", new Date() - startTime, "ms");
+
+// Verify final count
+var finalCount = db.reviews.countDocuments();
+print("Final document count verification:", finalCount);
+
+if (finalCount === totalInserted) {
+  print("SUCCESS: All documents inserted correctly!");
+} else {
+  print("WARNING: Count mismatch - expected", totalInserted, "but found", finalCount);
+}
 
 print("\nMongoDB initialization complete");
 print("Database: airbnb_reviews");
 print("Collection: reviews");
-print("Total documents:", db.reviews.countDocuments());
-print("Replica set: rs0 ready");
-
+print("Replica set: rs0 ready"); 

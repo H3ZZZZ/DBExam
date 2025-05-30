@@ -14,7 +14,7 @@ CREATE TABLE Users (
 
 -- Properties (Listings) table
 CREATE TABLE Properties (
-                            ID INT PRIMARY KEY,
+                            ID INT PRIMARY KEY AUTO_INCREMENT,
                             Host_ID INT NOT NULL,
                             Price DECIMAL(10,2) NOT NULL,
                             Room_type VARCHAR(100) NOT NULL,

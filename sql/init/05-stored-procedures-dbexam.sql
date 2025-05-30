@@ -10,6 +10,17 @@ BEGIN
     VALUES (p_name, p_email, p_mobile);
 END //
 
+CREATE PROCEDURE GetUser(
+    IN p_email VARCHAR(255)
+)
+BEGIN
+    SELECT * FROM Users
+    WHERE p_email = Email;
+
+END //
+
+
+
 
 CREATE PROCEDURE AddProperty(
     IN p_host_id INT,
@@ -67,10 +78,17 @@ BEGIN
     );
 END //
 
+
+
+
 DELIMITER ;
 -- CALL AddUser('Alice Johnson', 'alice@example.com', '123-456-7890');
+-- CALL GetUser('host1@email.com');
+    
 -- CALL AddProperty(3,150.00,'Entire apartment',4,2,1.25,0.75,'Copenhagen');
+
 -- CALL AddBooking(101, 3, '2025-06-01', '2025-06-05');
+
 
 
 

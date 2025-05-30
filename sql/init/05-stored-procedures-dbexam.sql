@@ -16,10 +16,28 @@ CREATE PROCEDURE GetUser(
 BEGIN
     SELECT * FROM Users
     WHERE p_email = Email;
-
 END //
 
+CREATE PROCEDURE UpdateUser(
+    IN p_user_id INT,
+    IN p_name VARCHAR(255),
+    IN p_email VARCHAR(255),
+    IN p_mobile VARCHAR(20)
+)
+BEGIN
+    UPDATE Users
+    SET Name = COALESCE(p_name, Name),
+        Email = COALESCE(p_email, Email),
+        Mobile = COALESCE(p_mobile, Mobile)
+    WHERE ID = p_user_id;
+END //
 
+CREATE PROCEDURE DeleteUser(
+    IN p_user_id INT
+)
+BEGIN
+    DELETE FROM Users WHERE ID = p_user_id;
+END //
 
 
 CREATE PROCEDURE AddProperty(
@@ -43,7 +61,37 @@ BEGIN
     );
 END //
 
+CREATE PROCEDURE GetProperty(
+    IN p_property_id INT
+)
+BEGIN
+    SELECT * FROM Properties WHERE ID = p_property_id;
+END //
 
+
+CREATE PROCEDURE UpdateProperty(
+    IN p_property_id INT,
+    IN p_price DECIMAL(10,2),
+    IN p_room_type VARCHAR(100),
+    IN p_person_capacity INT,
+    IN p_bedrooms INT,
+    IN p_center_distance DECIMAL(5,2),
+    IN p_metro_distance DECIMAL(5,2),
+    IN p_city VARCHAR(100)
+)
+BEGIN
+    UPDATE Properties
+    SET Price = COALESCE(p_price, Price),
+        Room_type = COALESCE(p_room_type, Room_type),
+        Person_capacity = COALESCE(p_person_capacity, Person_capacity),
+        Bedrooms = COALESCE(p_bedrooms, Bedrooms),
+        Center_distance = COALESCE(p_center_distance, Center_distance),
+        Metro_distance = COALESCE(p_metro_distance, Metro_distance),
+        City = COALESCE(p_city, City)
+    WHERE ID = p_property_id;
+END //
+
+-- Mangler delete Property --
 
 CREATE PROCEDURE AddBooking(
     IN p_property_id INT,
@@ -78,14 +126,18 @@ BEGIN
     );
 END //
 
-
+-- Mangler Get, Update, Delete Booking --
 
 
 DELIMITER ;
 -- CALL AddUser('Alice Johnson', 'alice@example.com', '123-456-7890');
 -- CALL GetUser('host1@email.com');
-    
+-- CALL UpdateUser(8,null,'updated@mail.com',null)
+-- CALL DeleteUser(8)
+
 -- CALL AddProperty(3,150.00,'Entire apartment',4,2,1.25,0.75,'Copenhagen');
+-- CALL GetProperty(1)
+-- CALL UpdateProperty(1, null, null, 4, null, null, null, null)
 
 -- CALL AddBooking(101, 3, '2025-06-01', '2025-06-05');
 

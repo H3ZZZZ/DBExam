@@ -8,12 +8,6 @@ spring:
     password: airbnb_pass
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-    database-platform: org.hibernate.dialect.MySQLDialect
-
   data:
     mongodb:
       uri: mongodb://localhost:27017/airbnb

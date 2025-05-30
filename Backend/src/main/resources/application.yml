@@ -16,7 +16,7 @@ spring:
 
   data:
     mongodb:
-      uri: mongodb://localhost:27017/airbnb_reviews
+      uri: mongodb://localhost:27017/airbnb
 
 springdoc:
   api-docs:

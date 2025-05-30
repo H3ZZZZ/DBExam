@@ -75,7 +75,7 @@ markTime("Primary election");
 
 // Setup reviews database
 print("Setting up reviews database...");
-db = db.getSiblingDB('airbnb_reviews');
+db = db.getSiblingDB('airbnb');
 
 try {
   db.createCollection('reviews');
@@ -267,6 +267,6 @@ if (finalCount === totalInserted) {
 }
 
 print("\nMongoDB initialization complete");
-print("Database: airbnb_reviews");
+print("Database: airbnb");
 print("Collection: reviews");
 print("Replica set: rs0 ready"); 

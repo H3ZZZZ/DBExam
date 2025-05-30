@@ -1,13 +1,13 @@
 package com.airbnb.backend.service;
 
+import com.airbnb.backend.dto.BookingDTO;
+import com.airbnb.backend.dto.BookingUpdateDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
-import java.sql.CallableStatement;
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.SQLException;
+import java.sql.*;
+import java.time.LocalDate;
 
 @Service
 public class BookingService {
@@ -29,4 +29,78 @@ public class BookingService {
             throw new RuntimeException("Error calling stored procedure AddBooking", e);
         }
     }
+
+    public BookingDTO getBookingById(int bookingId) {
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL GetBooking(?)}")) {
+
+            stmt.setInt(1, bookingId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    BookingDTO booking = new BookingDTO();
+                    booking.setId(rs.getInt("ID"));
+                    booking.setPropertyId(rs.getInt("Property_ID"));
+                    booking.setGuestId(rs.getInt("Guest_ID"));
+                    booking.setPrice(rs.getBigDecimal("Price"));
+                    booking.setBookingStart(rs.getDate("Booking_start").toLocalDate());
+                    booking.setBookingEnd(rs.getDate("Booking_end").toLocalDate());
+                    return booking;
+                } else {
+                    throw new RuntimeException("Booking not found");
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure GetBooking", e);
+        }
+    }
+
+    public void updateBooking(int bookingId, BookingUpdateDTO booking) {
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL UpdateBooking(?, ?, ?, ?, ?)}")) {
+
+            stmt.setInt(1, bookingId);
+
+            if (booking.getPropertyId() != null) {
+                stmt.setInt(2, booking.getPropertyId());
+            } else {
+                stmt.setNull(2, Types.INTEGER);
+            }
+
+            if (booking.getGuestId() != null) {
+                stmt.setInt(3, booking.getGuestId());
+            } else {
+                stmt.setNull(3, Types.INTEGER);
+            }
+
+            if (booking.getBookingStart() != null) {
+                stmt.setDate(4, Date.valueOf(booking.getBookingStart()));
+            } else {
+                stmt.setNull(4, Types.DATE);
+            }
+
+            if (booking.getBookingEnd() != null) {
+                stmt.setDate(5, Date.valueOf(booking.getBookingEnd()));
+            } else {
+                stmt.setNull(5, Types.DATE);
+            }
+
+            stmt.execute();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure UpdateBooking", e);
+        }
+    }
+
+    public void deleteBooking(int bookingId) {
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL DeleteBooking(?)}")) {
+
+            stmt.setInt(1, bookingId);
+            stmt.execute();
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure DeleteBooking", e);
+        }
+    }
+
 }

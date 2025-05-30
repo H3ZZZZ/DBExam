@@ -1,6 +1,7 @@
 package com.airbnb.backend.service;
 
 import com.airbnb.backend.dto.UserDTO;
+import com.airbnb.backend.dto.UserUpdateDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +40,7 @@ public class UserService {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     UserDTO user = new UserDTO();
+                    user.setId(rs.getInt("ID"));
                     user.setName(rs.getString("Name"));
                     user.setEmail(rs.getString("Email"));
                     user.setMobile(rs.getString("Mobile"));
@@ -53,20 +55,21 @@ public class UserService {
         }
     }
 
-    public void updateUser(int userId, String name, String email, String mobile) {
+    public void updateUser(int userId, UserUpdateDTO user) {
         try (Connection conn = dataSource.getConnection();
              CallableStatement stmt = conn.prepareCall("{CALL UpdateUser(?, ?, ?, ?)}")) {
 
             stmt.setInt(1, userId);
-            stmt.setObject(2, name);   // setObject lets you send null
-            stmt.setObject(3, email);
-            stmt.setObject(4, mobile);
+            stmt.setString(2, user.getName());
+            stmt.setString(3, user.getEmail());
+            stmt.setString(4, user.getMobile());
 
             stmt.execute();
         } catch (SQLException e) {
             throw new RuntimeException("Error calling stored procedure UpdateUser", e);
         }
     }
+
 
     public void deleteUser(int userId) {
         try (Connection conn = dataSource.getConnection();

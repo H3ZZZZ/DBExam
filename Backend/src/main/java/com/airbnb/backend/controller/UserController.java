@@ -1,6 +1,7 @@
 package com.airbnb.backend.controller;
 
 import com.airbnb.backend.dto.UserDTO;
+import com.airbnb.backend.dto.UserUpdateDTO;
 import com.airbnb.backend.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,10 +34,11 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<String> updateUser(@PathVariable("id") int userId, @RequestBody UserDTO userDTO) {
-        userService.updateUser(userId, userDTO.getName(), userDTO.getEmail(), userDTO.getMobile());
+    public ResponseEntity<String> updateUser(@PathVariable int id, @RequestBody UserUpdateDTO user) {
+        userService.updateUser(id, user);
         return ResponseEntity.ok("User updated successfully");
     }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable int id) {

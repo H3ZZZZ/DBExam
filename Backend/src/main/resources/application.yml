@@ -17,3 +17,9 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/airbnb_reviews
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

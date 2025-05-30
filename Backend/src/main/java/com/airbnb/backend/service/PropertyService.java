@@ -1,6 +1,7 @@
 package com.airbnb.backend.service;
 
 import com.airbnb.backend.dto.PropertyDTO;
+import com.airbnb.backend.dto.PropertyUpdateDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -65,7 +66,7 @@ public class PropertyService {
         }
     }
 
-    public void updateProperty(int propertyId, PropertyDTO property) {
+    public void updateProperty(int propertyId, PropertyUpdateDTO property) {
         try (Connection conn = dataSource.getConnection();
              CallableStatement stmt = conn.prepareCall("{CALL UpdateProperty(?, ?, ?, ?, ?, ?, ?, ?)}")) {
 
@@ -83,5 +84,18 @@ public class PropertyService {
             throw new RuntimeException("Error calling stored procedure UpdateProperty", e);
         }
     }
+
+
+    public void deleteProperty(int propertyId) {
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL DeleteProperty(?)}")) {
+
+            stmt.setInt(1, propertyId);
+            stmt.execute();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure DeleteProperty", e);
+        }
+    }
+
 
 }

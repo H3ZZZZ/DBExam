@@ -269,4 +269,96 @@ if (finalCount === totalInserted) {
 print("\nMongoDB initialization complete");
 print("Database: airbnb");
 print("Collection: reviews");
-print("Replica set: rs0 ready"); 
+print("Replica set: rs0 ready");
+
+// Calculate and populate property ratings collection
+print("\n=== Starting Property Ratings Calculation ===");
+
+db.property_ratings.drop();
+
+print("Calculating property ratings from reviews...");
+var ratingsStart = new Date();
+
+var ratingsData = db.reviews.aggregate([
+    {
+        $group: {
+            _id: "$property_id",
+            avg_cleanliness_rating: { $avg: "$cleanliness_rating" },
+            avg_satisfaction_rating: { $avg: "$guest_satisfaction" },
+            total_reviews: { $sum: 1 },
+            last_updated: { $max: "$created_at" }
+        }
+    },
+    {
+        $project: {
+            property_id: "$_id",
+            avg_cleanliness_rating: { $round: ["$avg_cleanliness_rating", 2] },
+            avg_satisfaction_rating: { $round: ["$avg_satisfaction_rating", 2] },
+            total_reviews: 1,
+            last_updated: { $ifNull: ["$last_updated", new Date()] },
+            created_at: new Date(),
+            _id: 0
+        }
+    }
+]);
+
+var aggregationTime = new Date() - ratingsStart;
+print("Property ratings aggregation completed in: " + aggregationTime + "ms");
+
+print("Inserting property ratings with batch processing...");
+var insertStart = new Date();
+
+var ratingsArray = ratingsData.toArray();
+var ratingsBatchSize = 1000;
+var totalRatingsInserted = 0;
+var ratingsBatch = [];
+
+for (var i = 0; i < ratingsArray.length; i++) {
+    ratingsBatch.push(ratingsArray[i]);
+    
+    if (ratingsBatch.length >= ratingsBatchSize || i === ratingsArray.length - 1) {
+        var batchStart = new Date();
+        db.property_ratings.insertMany(ratingsBatch, {ordered: false, writeConcern: {w: 1, j: false}});
+        var batchTime = new Date() - batchStart;
+        
+        totalRatingsInserted += ratingsBatch.length;
+        
+        print("Inserted ratings batch: " + totalRatingsInserted + " total ratings (" + 
+              batchTime + "ms for " + ratingsBatch.length + " docs, " + 
+              Math.round(ratingsBatch.length / (batchTime / 1000)) + " docs/sec)");
+        
+        ratingsBatch = [];
+    }
+}
+
+var insertTime = new Date() - insertStart;
+var totalRatingsTime = new Date() - ratingsStart;
+
+print("Successfully calculated and inserted ratings for " + totalRatingsInserted + " properties");
+print("Property ratings insertion completed in: " + insertTime + "ms");
+print("Total property ratings processing time: " + totalRatingsTime + "ms");
+print("Average ratings processing rate: " + Math.round(totalRatingsInserted / (totalRatingsTime / 1000)) + " ratings/sec");
+
+print("Creating indexes on property_ratings collection...");
+var indexStart = new Date();
+
+db.property_ratings.createIndex({ "property_id": 1 }, { unique: true });
+db.property_ratings.createIndex({ "avg_satisfaction_rating": -1 });
+db.property_ratings.createIndex({ "avg_cleanliness_rating": -1 });
+db.property_ratings.createIndex({ "total_reviews": -1 });
+
+var indexTime = new Date() - indexStart;
+print("Indexes created successfully in " + indexTime + "ms");
+
+var totalProperties = db.property_ratings.countDocuments();
+var avgSatisfactionResult = db.property_ratings.aggregate([
+    { $group: { _id: null, avgSatisfaction: { $avg: "$avg_satisfaction_rating" } } }
+]).toArray();
+
+print("Property Ratings Statistics:");
+print("   - Total properties with ratings: " + totalProperties);
+if (avgSatisfactionResult.length > 0) {
+    print("   - Overall average satisfaction: " + avgSatisfactionResult[0].avgSatisfaction.toFixed(2));
+}
+
+print("=== Property Ratings Calculation Completed ==="); 

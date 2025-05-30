@@ -189,7 +189,8 @@ print("Processing", csvProperties.length, "properties with batch inserts...");
 var batchSize = 1000;
 var batch = [];
 var totalInserted = 0;
-var insertStart = new Date();
+var processingStart = new Date();
+var totalDbInsertTime = 0; // Track actual DB insertion time separately
 
 batch.length = batchSize;
 var batchIndex = 0;
@@ -213,6 +214,7 @@ csvProperties.forEach(function(property, propertyIndex) {
     var batchStart = new Date();
     db.reviews.insertMany(batch, {ordered: false, writeConcern: {w: 1, j: false}});
     var batchTime = new Date() - batchStart;
+    totalDbInsertTime += batchTime;
     
     totalInserted += batchIndex;
     
@@ -232,21 +234,26 @@ if (batchIndex > 0) {
   var finalBatchStart = new Date();
   db.reviews.insertMany(batch, {ordered: false, writeConcern: {w: 1, j: false}});
   var finalBatchTime = new Date() - finalBatchStart;
+  totalDbInsertTime += finalBatchTime;
   
   totalInserted += batchIndex;
   print("Inserted final batch:", totalInserted, "total reviews (" + finalBatchTime + "ms for", batchIndex, "docs)");
 }
 
-var totalInsertTime = new Date() - insertStart;
-markTime("Data insertion");
+var totalProcessingTime = new Date() - processingStart;
+print("Data processing completed in:", totalProcessingTime, "ms");
+print("Pure DB insertion time:", totalDbInsertTime, "ms");
+print("Object creation overhead:", (totalProcessingTime - totalDbInsertTime), "ms");
 
 // Performance summary
 print("\nPERFORMANCE SUMMARY:");
 print("Total reviews inserted:", totalInserted);
 print("Properties covered:", csvProperties.length);
 print("Reviews per property: 1 (cycling through", commentsLength, "comment types)");
-print("Total insertion time:", totalInsertTime, "ms");
-print("Average insertion rate:", Math.round(totalInserted / (totalInsertTime / 1000)), "docs/sec");
+print("Total processing time:", totalProcessingTime, "ms");
+print("Pure DB insertion time:", totalDbInsertTime, "ms");
+print("Average insertion rate (pure DB):", Math.round(totalInserted / (totalDbInsertTime / 1000)), "docs/sec");
+print("Average processing rate (overall):", Math.round(totalInserted / (totalProcessingTime / 1000)), "docs/sec");
 print("Total script runtime:", new Date() - startTime, "ms");
 
 // Verify final count

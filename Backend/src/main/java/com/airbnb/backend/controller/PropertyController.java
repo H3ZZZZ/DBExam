@@ -29,4 +29,17 @@ public class PropertyController {
         );
         return ResponseEntity.ok("Property added successfully");
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PropertyDTO> getPropertyById(@PathVariable int id) {
+        PropertyDTO property = propertyService.getPropertyById(id);
+        return ResponseEntity.ok(property);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateProperty(@PathVariable int id, @RequestBody PropertyDTO property) {
+        propertyService.updateProperty(id, property);
+        return ResponseEntity.ok("Property updated successfully");
+    }
+
 }

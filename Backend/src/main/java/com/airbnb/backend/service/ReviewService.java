@@ -40,7 +40,7 @@ public class ReviewService {
             // Step 1: Validate input parameters
             if (!isValidReview(cleanlinessRating, satisfactionRating, comment)) {
                 result.put("success", false);
-                result.put("error", "Invalid review parameters - ratings must be 1-5, comment must be 1-1000 characters");
+                result.put("error", "Invalid review parameters - ratings must be 0-100, comment must be 1-1000 characters");
                 result.put("validation_stage", "input_validation");
                 return result;
             }
@@ -124,10 +124,10 @@ public class ReviewService {
      * Enhanced review validation
      */
     public boolean isValidReview(Integer cleanlinessRating, Integer satisfactionRating, String comment) {
-        if (cleanlinessRating == null || cleanlinessRating < 1 || cleanlinessRating > 5) {
+        if (cleanlinessRating == null || cleanlinessRating < 0 || cleanlinessRating > 100) {
             return false;
         }
-        if (satisfactionRating == null || satisfactionRating < 1 || satisfactionRating > 5) {
+        if (satisfactionRating == null || satisfactionRating < 0 || satisfactionRating > 100) {
             return false;
         }
         if (comment == null || comment.trim().isEmpty() || comment.length() > 1000) {

@@ -1,6 +1,7 @@
 package com.airbnb.backend.controller;
 
 import com.airbnb.backend.dto.PropertyDTO;
+import com.airbnb.backend.dto.PropertyUpdateDTO;
 import com.airbnb.backend.service.PropertyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,4 +30,24 @@ public class PropertyController {
         );
         return ResponseEntity.ok("Property added successfully");
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PropertyDTO> getPropertyById(@PathVariable int id) {
+        PropertyDTO property = propertyService.getPropertyById(id);
+        return ResponseEntity.ok(property);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateProperty(@PathVariable int id, @RequestBody PropertyUpdateDTO property) {
+        propertyService.updateProperty(id, property);
+        return ResponseEntity.ok("Property updated successfully");
+    }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteProperty(@PathVariable int id) {
+        propertyService.deleteProperty(id);
+        return ResponseEntity.ok("Property deleted successfully");
+    }
+
 }

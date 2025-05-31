@@ -1,6 +1,7 @@
 package com.airbnb.backend.controller;
 
 import com.airbnb.backend.dto.BookingDTO;
+import com.airbnb.backend.dto.BookingUpdateDTO;
 import com.airbnb.backend.service.BookingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,4 +26,26 @@ public class BookingController {
         );
         return ResponseEntity.ok("Booking added successfully");
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<BookingDTO> getBookingById(@PathVariable int id) {
+        BookingDTO booking = bookingService.getBookingById(id);
+        return ResponseEntity.ok(booking);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateBooking(@PathVariable int id, @RequestBody BookingUpdateDTO booking) {
+        bookingService.updateBooking(id, booking);
+        return ResponseEntity.ok("Booking updated successfully");
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteBooking(@PathVariable int id) {
+        bookingService.deleteBooking(id);
+        return ResponseEntity.ok("Booking deleted successfully");
+    }
+
+
+
+
 }

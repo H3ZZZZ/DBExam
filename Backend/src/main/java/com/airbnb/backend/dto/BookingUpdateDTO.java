@@ -1,25 +1,14 @@
 package com.airbnb.backend.dto;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public class BookingDTO {
-    private Integer id;
+public class BookingUpdateDTO {
     private Integer propertyId;
     private Integer guestId;
-    private BigDecimal price;
     private LocalDate bookingStart;
     private LocalDate bookingEnd;
 
-    public BookingDTO() {}
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
+    public BookingUpdateDTO() {}
 
     public Integer getPropertyId() {
         return propertyId;
@@ -35,14 +24,6 @@ public class BookingDTO {
 
     public void setGuestId(Integer guestId) {
         this.guestId = guestId;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
     }
 
     public LocalDate getBookingStart() {

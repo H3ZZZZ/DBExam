@@ -17,7 +17,7 @@ public class BookingController {
     }
 
     @PostMapping
-    public ResponseEntity<String> addBooking(@RequestBody BookingDTO booking) {
+    public ResponseEntity<String> addBooking(@RequestBody BookingUpdateDTO booking) {
         bookingService.addBooking(
                 booking.getPropertyId(),
                 booking.getGuestId(),

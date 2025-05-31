@@ -45,7 +45,7 @@ public class ReviewService {
                 return result;
             }
             
-            // Step 2: ENHANCED VALIDATION - Check booking exists and matches property using MySQL stored procedure
+            // Step 2: Check booking exists and matches property
             boolean bookingValid = validateBookingExists(bookingId, propertyId);
             if (!bookingValid) {
                 result.put("success", false);
@@ -55,17 +55,23 @@ public class ReviewService {
                 return result;
             }
             
-            // Step 3: Check if booking is completed (optional but recommended business logic)
+            // Step 3: Enforce business rule - booking must be completed
             boolean bookingCompleted = isBookingCompleted(bookingId);
             if (!bookingCompleted) {
-                result.put("warning", "Review created for active/upcoming booking - typically reviews are only allowed after completion");
-                result.put("booking_status_check", "MySQL stored procedure: IsBookingCompleted");
+                result.put("success", false);
+                result.put("error", "Review cannot be created - booking_id " + bookingId + " is not yet completed. Reviews are only allowed after booking end date has passed.");
+                result.put("validation_stage", "business_rule_validation");
+                result.put("stored_procedure_used", "IsBookingCompleted");
+                result.put("booking_status", "active or upcoming");
+                result.put("business_rule", "Reviews can only be created for completed bookings");
+                result.put("validation_details", createValidationMetadata(bookingId, propertyId, bookingCompleted));
+                return result;
             }
             
             // Step 4: Create review in MongoDB
             Map<String, Object> mongoResult = reviewRepository.addReview(propertyId, bookingId, cleanlinessRating, satisfactionRating, comment);
             
-            // Step 5: Enhance result with validation details
+            // Step 5: Add validation metadata
             mongoResult.put("validation_details", createValidationMetadata(bookingId, propertyId, bookingCompleted));
             
             return mongoResult;
@@ -82,18 +88,15 @@ public class ReviewService {
      * Add a review with validation and automatically trigger property rating update
      */
     public Map<String, Object> addReviewWithRatingUpdate(Integer propertyId, Integer bookingId, Integer cleanlinessRating, Integer satisfactionRating, String comment) {
-        // First add the review with enhanced validation
         Map<String, Object> reviewResult = addReview(propertyId, bookingId, cleanlinessRating, satisfactionRating, comment);
         
         if (reviewResult != null && Boolean.TRUE.equals(reviewResult.get("success"))) {
-            // Then trigger property rating recalculation
             Map<String, Object> ratingResult = propertyRatingService.updatePropertyRatingAfterNewReview(propertyId);
             
-            // Combine results
+            // Organize response metadata
             reviewResult.put("rating_update", ratingResult);
-            reviewResult.put("trigger_simulation", "Automatic property rating recalculation after review insert");
             reviewResult.put("cross_service_operation", true);
-            reviewResult.put("dual_database_workflow", "MySQL validation -> MongoDB review -> MongoDB rating update");
+            reviewResult.put("workflow_completed", "MySQL validation -> MongoDB review -> MongoDB rating update");
         }
         
         return reviewResult;
@@ -196,15 +199,21 @@ public class ReviewService {
         
         // Enhanced metadata about the REAL transformation process using stored procedures
         Map<String, Object> transformationInfo = new HashMap<>();
+        
+        // Process Summary
         transformationInfo.put("description", "REAL Cross-database data transformation using MySQL stored procedures");
         transformationInfo.put("process", "MongoDB reviews -> booking_id -> MySQL stored procedure GetGuestInfoFromBooking -> guest enrichment");
-        transformationInfo.put("databases_involved", Arrays.asList("MongoDB (reviews collection)", "MySQL (stored procedures: GetGuestInfoFromBooking)"));
-        transformationInfo.put("transformation_type", "Real-time SimpleJdbcCall MySQL stored procedure integration");
-        transformationInfo.put("stored_procedure", "CALL GetGuestInfoFromBooking(?)");
-        transformationInfo.put("architecture", "Dual stored procedure approach: MongoDB aggregation pipelines + MySQL stored procedures");
+        
+        // Results
+        transformationInfo.put("total_reviews", reviews.size());
         transformationInfo.put("success_count", transformationSuccessCount);
         transformationInfo.put("error_count", transformationErrorCount);
-        transformationInfo.put("total_reviews", reviews.size());
+        
+        // Technical Details
+        transformationInfo.put("stored_procedure", "CALL GetGuestInfoFromBooking(?)");
+        transformationInfo.put("transformation_type", "Real-time SimpleJdbcCall MySQL stored procedure integration");
+        transformationInfo.put("databases_involved", Arrays.asList("MongoDB (reviews collection)", "MySQL (stored procedures: GetGuestInfoFromBooking)"));
+        transformationInfo.put("architecture", "Dual stored procedure approach: MongoDB aggregation pipelines + MySQL stored procedures");
         
         reviewsResult.put("transformation_info", transformationInfo);
         return reviewsResult;
@@ -240,12 +249,26 @@ public class ReviewService {
      */
     private Map<String, Object> createValidationMetadata(Integer bookingId, Integer propertyId, boolean bookingCompleted) {
         Map<String, Object> metadata = new HashMap<>();
+        
+        // Business Rule Status
+        metadata.put("business_rule_enforced", "Reviews can only be created for completed bookings");
+        metadata.put("booking_completed", bookingCompleted);
+        
+        if (bookingCompleted) {
+            metadata.put("review_creation_status", "Allowed - booking has been completed");
+        } else {
+            metadata.put("review_creation_status", "Blocked - booking is still active or upcoming");
+        }
+        
+        // Database Operations
         metadata.put("booking_validation", "MySQL stored procedure: ValidateBookingExists(" + bookingId + ", " + propertyId + ")");
         metadata.put("completion_check", "MySQL stored procedure: IsBookingCompleted(" + bookingId + ")");
-        metadata.put("booking_completed", bookingCompleted);
+        
+        // Architecture Details
         metadata.put("validation_approach", "Cross-database stored procedure validation before MongoDB insert");
-        metadata.put("data_integrity", "Ensures MongoDB reviews reference valid MySQL bookings");
+        metadata.put("data_integrity", "Ensures MongoDB reviews reference valid completed MySQL bookings");
         metadata.put("architecture_benefit", "Demonstrates ACID validation with eventual consistency analytics");
+        
         return metadata;
     }
 } 

@@ -37,7 +37,7 @@ public class ReviewController {
     
     @PostMapping("/add")
     @Operation(summary = "Add a new review with stored procedure validation", 
-               description = "Add a review with comprehensive validation using MySQL stored procedures (ValidateBookingExists, IsBookingCompleted)")
+               description = "Add a review with comprehensive validation using MySQL stored procedures (ValidateBookingExists, IsBookingCompleted). BUSINESS RULE: Reviews can only be created for completed bookings.")
     public ResponseEntity<Map<String, Object>> addReview(
             @RequestParam Integer propertyId,
             @RequestParam Integer bookingId,
@@ -50,7 +50,7 @@ public class ReviewController {
     
     @PostMapping("/add-with-rating-update")
     @Operation(summary = "Add review and update property rating with stored procedure validation", 
-               description = "Add a review with MySQL stored procedure validation and automatically trigger MongoDB aggregation pipeline rating recalculation")
+               description = "Add a review with MySQL stored procedure validation and automatically trigger MongoDB aggregation pipeline rating recalculation. BUSINESS RULE: Reviews can only be created for completed bookings.")
     public ResponseEntity<Map<String, Object>> addReviewWithRatingUpdate(
             @RequestParam Integer propertyId,
             @RequestParam Integer bookingId,
@@ -101,7 +101,7 @@ public class ReviewController {
     
     @GetMapping("/validate-booking/{bookingId}/{propertyId}")
     @Operation(summary = "Validate booking for review creation", 
-               description = "Demonstrates MySQL stored procedure integration: ValidateBookingExists and IsBookingCompleted for review validation")
+               description = "Demonstrates MySQL stored procedure integration: ValidateBookingExists and IsBookingCompleted for review validation. BUSINESS RULE: Reviews require completed bookings.")
     public ResponseEntity<Map<String, Object>> validateBookingForReview(
             @PathVariable Integer bookingId, 
             @PathVariable Integer propertyId) {
@@ -120,22 +120,40 @@ public class ReviewController {
             
             // Build comprehensive response
             result.put("success", true);
+            
+            // Validation Results
             result.put("booking_exists", bookingExists);
             result.put("booking_completed", bookingCompleted);
-            result.put("can_create_review", bookingExists); // Could add additional business logic
-            result.put("recommendation", bookingCompleted ? "Review creation recommended" : "Booking not yet completed - review creation allowed but not typical");
+            result.put("can_create_review", bookingExists && bookingCompleted);
             
+            // Business Rule
+            result.put("business_rule", "Reviews can only be created for completed bookings");
+            
+            // Status and Recommendation
+            if (bookingCompleted && bookingExists) {
+                result.put("status", "Ready for review");
+                result.put("recommendation", "Review creation allowed - booking is completed");
+            } else if (bookingExists && !bookingCompleted) {
+                result.put("status", "Booking active or upcoming");
+                result.put("recommendation", "Review creation blocked - booking not yet completed");
+            } else {
+                result.put("status", "Invalid booking");
+                result.put("recommendation", "Review creation blocked - booking not found");
+            }
+            
+            // Booking Details
             if (bookingInfo != null) {
                 result.put("booking_details", bookingInfo);
             }
             
-            // Add stored procedure documentation
+            // Technical Documentation
             Map<String, Object> storedProcedures = new HashMap<>();
+            storedProcedures.put("database", "MySQL");
             storedProcedures.put("validation_procedure", "CALL ValidateBookingExists(" + bookingId + ", " + propertyId + ")");
             storedProcedures.put("completion_procedure", "CALL IsBookingCompleted(" + bookingId + ")");
             storedProcedures.put("info_procedure", "CALL GetGuestInfoFromBooking(" + bookingId + ")");
-            storedProcedures.put("database", "MySQL");
             storedProcedures.put("architecture", "Dual stored procedure approach demonstrating traditional SQL procedures");
+            storedProcedures.put("business_rule_enforcement", "Reviews require both valid and completed bookings");
             
             result.put("stored_procedures_used", storedProcedures);
             

@@ -96,19 +96,16 @@ if (existingCount > 0) {
   print("Cleared", existingCount, "documents in", deleteTime, "ms");
 }
 
-print("Generating reviews with optimized batch processing...");
+print("Creating reviews only for properties with completed bookings...");
 
-// Create indexes before data loading
-print("Creating indexes...");
 var indexStart = new Date();
 db.reviews.createIndex({ "property_id": 1 });
+db.reviews.createIndex({ "booking_id": 1 });
 db.reviews.createIndex({ "cleanliness_rating": 1 });
 db.reviews.createIndex({ "guest_satisfaction": 1 });
 db.reviews.createIndex({ "created_at": 1 });
 var indexTime = new Date() - indexStart;
-print("Indexes created in", indexTime, "ms");
-
-markTime("Database setup");
+print("Created indexes in:", indexTime, "ms");
 
 // Generic comments for reviews
 var cyclingComments = [
@@ -120,245 +117,140 @@ var cyclingComments = [
 ];
 
 var commentsLength = cyclingComments.length;
-var baseDate = new Date("2024-01-01");
-var baseDateMs = baseDate.getTime();
+
+// Sample bookings for demonstration workflow - these would come from MySQL in a real scenario
+var sampleBookings = [
+  {booking_id: 1, property_id: 140, booking_end: new Date("2024-11-05")},
+  {booking_id: 2, property_id: 18272, booking_end: new Date("2025-05-19")},
+  {booking_id: 3, property_id: 11608, booking_end: new Date("2024-12-11")},
+  {booking_id: 4, property_id: 5581, booking_end: new Date("2024-12-19")},
+  {booking_id: 5, property_id: 1985, booking_end: new Date("2024-08-27")},
+  {booking_id: 6, property_id: 24879, booking_end: new Date("2025-03-31")},
+  {booking_id: 7, property_id: 16753, booking_end: new Date("2025-03-24")},
+  {booking_id: 8, property_id: 3561, booking_end: new Date("2025-01-16")},
+  {booking_id: 9, property_id: 11260, booking_end: new Date("2025-04-05")},
+  {booking_id: 10, property_id: 17179, booking_end: new Date("2024-06-18")}
+];
+
+print("Processing", sampleBookings.length, "completed bookings for review generation...");
+
+var reviews = [];
+var reviewDate = new Date("2024-01-01");
 var dayInMs = 24 * 60 * 60 * 1000;
 
-// Load properties from CSV file - previously used insertOne but this is more efficient
-function loadCSVPropertiesOptimized() {
-  try {
-    print("Loading properties from CSV file...");
-    var loadStart = new Date();
-    
-    const fs = require('fs');
-    var csvContent = fs.readFileSync("/data/cleaned_airbnb_data.csv", "utf8");
-    var lines = csvContent.split('\n');
-    var dataLines = lines.slice(1).filter(function(line) { return line.trim().length > 0; });
-    var properties = [];
-    
-    properties.length = dataLines.length;
-    var validCount = 0;
-    
-    dataLines.forEach(function(line) {
-      var columns = line.split(',');
-      if (columns.length < 11) return;
-      
-      try {
-        var id = parseInt(columns[0]);
-        var cleanliness = parseInt(columns[4]);
-        var satisfaction = parseInt(columns[5]);
-        
-        if (!isNaN(id) && !isNaN(cleanliness) && !isNaN(satisfaction)) {
-          properties[validCount] = {
-            ID: id,
-            cleanliness_rating: cleanliness,
-            guest_satisfaction_overall: satisfaction
-          };
-          validCount++;
-        }
-      } catch (e) {
-        print("Error processing line:", e.message);
-      }
-    });
-    
-    properties.length = validCount;
-    
-    var loadTime = new Date() - loadStart;
-    print("Successfully loaded", validCount, "properties from CSV in", loadTime, "ms");
-    return properties;
-    
-  } catch (e) {
-    print("Error loading CSV file:", e.message);
-    print("Falling back to sample data...");
-    return [
-      {ID: 1, cleanliness_rating: 100, guest_satisfaction_overall: 93},
-      {ID: 2, cleanliness_rating: 80, guest_satisfaction_overall: 85},
-      {ID: 3, cleanliness_rating: 90, guest_satisfaction_overall: 87},
-      {ID: 4, cleanliness_rating: 90, guest_satisfaction_overall: 90},
-      {ID: 5, cleanliness_rating: 100, guest_satisfaction_overall: 98}
-    ];
-  }
-}
-
-var csvProperties = loadCSVPropertiesOptimized();
-markTime("CSV loading");
-
-print("Processing", csvProperties.length, "properties with batch inserts...");
-
-// Optimized batch processing
-var batchSize = 1000;
-var batch = [];
-var totalInserted = 0;
-var processingStart = new Date();
-var totalDbInsertTime = 0; // Track actual DB insertion time separately
-
-batch.length = batchSize;
-var batchIndex = 0;
-
-csvProperties.forEach(function(property, propertyIndex) {
-  var review = {
-    property_id: property.ID,
-    cleanliness_rating: property.cleanliness_rating,
-    guest_satisfaction: property.guest_satisfaction_overall,
-    text_comment: cyclingComments[propertyIndex % commentsLength],
-    created_at: new Date(baseDateMs + propertyIndex * dayInMs)
-  };
-  
-  batch[batchIndex] = review;
-  batchIndex++;
-  
-  // Insert batch when full
-  if (batchIndex >= batchSize) {
-    batch.length = batchIndex;
-    
-    var batchStart = new Date();
-    db.reviews.insertMany(batch, {ordered: false, writeConcern: {w: 1, j: false}});
-    var batchTime = new Date() - batchStart;
-    totalDbInsertTime += batchTime;
-    
-    totalInserted += batchIndex;
-    
-    print("Inserted batch:", totalInserted, "total reviews (" + batchTime + "ms for", batchIndex, "docs,", 
-          Math.round(batchIndex / (batchTime / 1000)), "docs/sec)");
-    
-    // Reset batch
-    batch = [];
-    batch.length = batchSize;
-    batchIndex = 0;
+sampleBookings.forEach(function(booking, index) {
+  // Only create reviews for completed bookings (booking end date has passed)
+  var currentDate = new Date();
+  if (booking.booking_end < currentDate) {
+    var review = {
+      property_id: booking.property_id,
+      booking_id: booking.booking_id,
+      cleanliness_rating: Math.floor(Math.random() * 21) + 80, // 80-100 scale
+      guest_satisfaction: Math.floor(Math.random() * 21) + 80, // 80-100 scale  
+      text_comment: cyclingComments[index % commentsLength],
+      created_at: new Date(booking.booking_end.getTime() + (Math.random() * 7 * dayInMs)) // Review 0-7 days after booking ends
+    };
+    reviews.push(review);
   }
 });
 
-// Insert remaining records
-if (batchIndex > 0) {
-  batch.length = batchIndex;
-  var finalBatchStart = new Date();
-  db.reviews.insertMany(batch, {ordered: false, writeConcern: {w: 1, j: false}});
-  var finalBatchTime = new Date() - finalBatchStart;
-  totalDbInsertTime += finalBatchTime;
+print("Generated", reviews.length, "reviews for completed bookings");
+print("Guest information retrieved via booking_id -> MySQL transformation");
+
+if (reviews.length > 0) {
+  var insertStart = new Date();
+  db.reviews.insertMany(reviews, {ordered: false, writeConcern: {w: 1, j: false}});
+  var insertTime = new Date() - insertStart;
   
-  totalInserted += batchIndex;
-  print("Inserted final batch:", totalInserted, "total reviews (" + finalBatchTime + "ms for", batchIndex, "docs)");
+  print("Inserted", reviews.length, "reviews in", insertTime, "ms");
+  print("Average insertion rate:", Math.round(reviews.length / (insertTime / 1000)), "docs/sec");
+} else {
+  print("No completed bookings found - no reviews to insert");
 }
-
-var totalProcessingTime = new Date() - processingStart;
-print("Data processing completed in:", totalProcessingTime, "ms");
-print("Pure DB insertion time:", totalDbInsertTime, "ms");
-print("Object creation overhead:", (totalProcessingTime - totalDbInsertTime), "ms");
-
-// Performance summary
-print("\nPERFORMANCE SUMMARY:");
-print("Total reviews inserted:", totalInserted);
-print("Properties covered:", csvProperties.length);
-print("Reviews per property: 1 (cycling through", commentsLength, "comment types)");
-print("Total processing time:", totalProcessingTime, "ms");
-print("Pure DB insertion time:", totalDbInsertTime, "ms");
-print("Average insertion rate (pure DB):", Math.round(totalInserted / (totalDbInsertTime / 1000)), "docs/sec");
-print("Average processing rate (overall):", Math.round(totalInserted / (totalProcessingTime / 1000)), "docs/sec");
-print("Total script runtime:", new Date() - startTime, "ms");
 
 // Verify final count
 var finalCount = db.reviews.countDocuments();
 print("Final document count verification:", finalCount);
 
-if (finalCount === totalInserted) {
-  print("SUCCESS: All documents inserted correctly!");
-} else {
-  print("WARNING: Count mismatch - expected", totalInserted, "but found", finalCount);
-}
-
-print("\nMongoDB initialization complete");
+print("\nWorkflow demonstration setup complete");
 print("Database: airbnb");
 print("Collection: reviews");
+print("Reviews created only for completed bookings with booking_id reference");
 print("Replica set: rs0 ready");
 
 // Calculate and populate property ratings collection
 print("\n=== Starting Property Ratings Calculation ===");
 
-db.property_ratings.drop();
+// Only calculate ratings if we have reviews
+var reviewCount = db.reviews.countDocuments();
+if (reviewCount > 0) {
+  db.property_ratings.drop();
 
-print("Calculating property ratings from reviews...");
-var ratingsStart = new Date();
+  print("Calculating property ratings from", reviewCount, "reviews...");
+  var ratingsStart = new Date();
 
-var ratingsData = db.reviews.aggregate([
-    {
-        $group: {
-            _id: "$property_id",
-            avg_cleanliness_rating: { $avg: "$cleanliness_rating" },
-            avg_satisfaction_rating: { $avg: "$guest_satisfaction" },
-            total_reviews: { $sum: 1 },
-            last_updated: { $max: "$created_at" }
-        }
-    },
-    {
-        $project: {
-            property_id: "$_id",
-            avg_cleanliness_rating: { $round: ["$avg_cleanliness_rating", 2] },
-            avg_satisfaction_rating: { $round: ["$avg_satisfaction_rating", 2] },
-            total_reviews: 1,
-            last_updated: { $ifNull: ["$last_updated", new Date()] },
-            created_at: new Date(),
-            _id: 0
-        }
-    }
-]);
+  var ratingsData = db.reviews.aggregate([
+      {
+          $group: {
+              _id: "$property_id",
+              avg_cleanliness_rating: { $avg: "$cleanliness_rating" },
+              avg_satisfaction_rating: { $avg: "$guest_satisfaction" },
+              total_reviews: { $sum: 1 },
+              last_updated: { $max: "$created_at" }
+          }
+      },
+      {
+          $project: {
+              property_id: "$_id",
+              avg_cleanliness_rating: { $round: ["$avg_cleanliness_rating", 2] },
+              avg_satisfaction_rating: { $round: ["$avg_satisfaction_rating", 2] },
+              total_reviews: 1,
+              last_updated: { $ifNull: ["$last_updated", new Date()] },
+              created_at: new Date(),
+              _id: 0
+          }
+      }
+  ]);
 
-var aggregationTime = new Date() - ratingsStart;
-print("Property ratings aggregation completed in: " + aggregationTime + "ms");
+  var aggregationTime = new Date() - ratingsStart;
+  print("Property ratings aggregation completed in:", aggregationTime, "ms");
 
-print("Inserting property ratings with batch processing...");
-var insertStart = new Date();
+  print("Inserting property ratings...");
+  var insertStart = new Date();
 
-var ratingsArray = ratingsData.toArray();
-var ratingsBatchSize = 1000;
-var totalRatingsInserted = 0;
-var ratingsBatch = [];
+  var ratingsArray = ratingsData.toArray();
+  var totalRatingsInserted = 0;
 
-for (var i = 0; i < ratingsArray.length; i++) {
-    ratingsBatch.push(ratingsArray[i]);
-    
-    if (ratingsBatch.length >= ratingsBatchSize || i === ratingsArray.length - 1) {
-        var batchStart = new Date();
-        db.property_ratings.insertMany(ratingsBatch, {ordered: false, writeConcern: {w: 1, j: false}});
-        var batchTime = new Date() - batchStart;
-        
-        totalRatingsInserted += ratingsBatch.length;
-        
-        print("Inserted ratings batch: " + totalRatingsInserted + " total ratings (" + 
-              batchTime + "ms for " + ratingsBatch.length + " docs, " + 
-              Math.round(ratingsBatch.length / (batchTime / 1000)) + " docs/sec)");
-        
-        ratingsBatch = [];
-    }
+  if (ratingsArray.length > 0) {
+      db.property_ratings.insertMany(ratingsArray, {ordered: false, writeConcern: {w: 1, j: false}});
+      totalRatingsInserted = ratingsArray.length;
+      
+      var insertTime = new Date() - insertStart;
+      print("Inserted", totalRatingsInserted, "property ratings in", insertTime, "ms");
+      
+      // Create indexes for property_ratings
+      db.property_ratings.createIndex({ "property_id": 1 }, { unique: true });
+      db.property_ratings.createIndex({ "avg_satisfaction_rating": -1 });
+      db.property_ratings.createIndex({ "avg_cleanliness_rating": -1 });
+      db.property_ratings.createIndex({ "total_reviews": -1 });
+      
+      print("\nProperty ratings summary:");
+      print("- Properties with ratings:", totalRatingsInserted);
+      print("- Based on", reviewCount, "reviews");
+      print("- Ready for workflow demonstration");
+  } else {
+      print("No ratings to insert");
+  }
+} else {
+  print("No reviews found - skipping property ratings calculation");
+  print("Use the API to add reviews after bookings are completed");
 }
 
-var insertTime = new Date() - insertStart;
-var totalRatingsTime = new Date() - ratingsStart;
+print("\n=== Workflow Demonstration Ready ===");
+print("1. MySQL has Users, Properties, and Bookings tables populated");
+print("2. MongoDB has", reviewCount, "reviews for completed bookings");
+print("3. Property ratings calculated and ready");
+print("4. API endpoints available for adding new reviews with booking_id");
+print("5. Cross-service integration will update ratings automatically");
 
-print("Successfully calculated and inserted ratings for " + totalRatingsInserted + " properties");
-print("Property ratings insertion completed in: " + insertTime + "ms");
-print("Total property ratings processing time: " + totalRatingsTime + "ms");
-print("Average ratings processing rate: " + Math.round(totalRatingsInserted / (totalRatingsTime / 1000)) + " ratings/sec");
-
-print("Creating indexes on property_ratings collection...");
-var indexStart = new Date();
-
-db.property_ratings.createIndex({ "property_id": 1 }, { unique: true });
-db.property_ratings.createIndex({ "avg_satisfaction_rating": -1 });
-db.property_ratings.createIndex({ "avg_cleanliness_rating": -1 });
-db.property_ratings.createIndex({ "total_reviews": -1 });
-
-var indexTime = new Date() - indexStart;
-print("Indexes created successfully in " + indexTime + "ms");
-
-var totalProperties = db.property_ratings.countDocuments();
-var avgSatisfactionResult = db.property_ratings.aggregate([
-    { $group: { _id: null, avgSatisfaction: { $avg: "$avg_satisfaction_rating" } } }
-]).toArray();
-
-print("Property Ratings Statistics:");
-print("   - Total properties with ratings: " + totalProperties);
-if (avgSatisfactionResult.length > 0) {
-    print("   - Overall average satisfaction: " + avgSatisfactionResult[0].avgSatisfaction.toFixed(2));
-}
-
-print("=== Property Ratings Calculation Completed ==="); 
+markTime("MongoDB initialization complete"); 

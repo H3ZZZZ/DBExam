@@ -56,6 +56,7 @@ public class ReviewRepository {
                 ),
                 new Document("$project", new Document()
                     .append("property_id", 1)
+                    .append("booking_id", 1)
                     .append("cleanliness_rating", 1)
                     .append("guest_satisfaction", 1)
                     .append("text_comment", 1)
@@ -118,10 +119,11 @@ public class ReviewRepository {
     /**
      * Add a new review
      */
-    public Map<String, Object> addReview(Integer propertyId, Integer cleanlinessRating, Integer satisfactionRating, String comment) {
+    public Map<String, Object> addReview(Integer propertyId, Integer bookingId, Integer cleanlinessRating, Integer satisfactionRating, String comment) {
         try {
             Document review = new Document()
                 .append("property_id", propertyId)
+                .append("booking_id", bookingId)
                 .append("cleanliness_rating", cleanlinessRating)
                 .append("guest_satisfaction", satisfactionRating)
                 .append("text_comment", comment)
@@ -133,6 +135,7 @@ public class ReviewRepository {
             response.put("success", true);
             response.put("message", "Review added successfully");
             response.put("property_id", propertyId);
+            response.put("booking_id", bookingId);
             response.put("review_data", review);
             return response;
         } catch (Exception e) {

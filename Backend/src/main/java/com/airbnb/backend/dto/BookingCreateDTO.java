@@ -2,11 +2,29 @@ package com.airbnb.backend.dto;
 
 import java.time.LocalDate;
 
-public class BookingUpdateDTO {
+public class BookingCreateDTO {
+    private Integer propertyId;
+    private Integer guestId;
     private LocalDate bookingStart;
     private LocalDate bookingEnd;
 
-    public BookingUpdateDTO() {}
+    public BookingCreateDTO() {}
+
+    public Integer getPropertyId() {
+        return propertyId;
+    }
+
+    public void setPropertyId(Integer propertyId) {
+        this.propertyId = propertyId;
+    }
+
+    public Integer getGuestId() {
+        return guestId;
+    }
+
+    public void setGuestId(Integer guestId) {
+        this.guestId = guestId;
+    }
 
     public LocalDate getBookingStart() {
         return bookingStart;

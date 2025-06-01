@@ -1,5 +1,6 @@
 package com.airbnb.backend.controller;
 
+import com.airbnb.backend.dto.BookingCreateDTO;
 import com.airbnb.backend.dto.BookingDTO;
 import com.airbnb.backend.dto.BookingUpdateDTO;
 import com.airbnb.backend.service.BookingService;
@@ -17,7 +18,7 @@ public class BookingController {
     }
 
     @PostMapping
-    public ResponseEntity<String> addBooking(@RequestBody BookingDTO booking) {
+    public ResponseEntity<String> addBooking(@RequestBody BookingCreateDTO booking) {
         bookingService.addBooking(
                 booking.getPropertyId(),
                 booking.getGuestId(),

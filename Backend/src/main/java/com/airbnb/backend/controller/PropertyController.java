@@ -1,5 +1,6 @@
 package com.airbnb.backend.controller;
 
+import com.airbnb.backend.dto.PropertyCreateDTO;
 import com.airbnb.backend.dto.PropertyDTO;
 import com.airbnb.backend.dto.PropertyUpdateDTO;
 import com.airbnb.backend.service.PropertyService;
@@ -17,7 +18,7 @@ public class PropertyController {
     }
 
     @PostMapping
-    public ResponseEntity<String> addProperty(@RequestBody PropertyDTO property) {
+    public ResponseEntity<String> addProperty(@RequestBody PropertyCreateDTO property) {
         propertyService.addProperty(
                 property.getHostId(),
                 property.getPrice(),

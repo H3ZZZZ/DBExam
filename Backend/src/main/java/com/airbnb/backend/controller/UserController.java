@@ -18,7 +18,7 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<String> addUser(@RequestBody UserDTO user) {
+    public ResponseEntity<String> addUser(@RequestBody UserUpdateDTO user) {
         userService.addUser(user.getName(), user.getEmail(), user.getMobile());
         return ResponseEntity.ok("User added successfully");
     }

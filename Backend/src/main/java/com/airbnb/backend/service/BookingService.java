@@ -57,32 +57,20 @@ public class BookingService {
 
     public void updateBooking(int bookingId, BookingUpdateDTO booking) {
         try (Connection conn = dataSource.getConnection();
-             CallableStatement stmt = conn.prepareCall("{CALL UpdateBooking(?, ?, ?, ?, ?)}")) {
+             CallableStatement stmt = conn.prepareCall("{CALL UpdateBooking(?, ?, ?)}")) {
 
             stmt.setInt(1, bookingId);
 
-            if (booking.getPropertyId() != null) {
-                stmt.setInt(2, booking.getPropertyId());
-            } else {
-                stmt.setNull(2, Types.INTEGER);
-            }
-
-            if (booking.getGuestId() != null) {
-                stmt.setInt(3, booking.getGuestId());
-            } else {
-                stmt.setNull(3, Types.INTEGER);
-            }
-
             if (booking.getBookingStart() != null) {
-                stmt.setDate(4, Date.valueOf(booking.getBookingStart()));
+                stmt.setDate(2, Date.valueOf(booking.getBookingStart()));
             } else {
-                stmt.setNull(4, Types.DATE);
+                stmt.setNull(2, Types.DATE);
             }
 
             if (booking.getBookingEnd() != null) {
-                stmt.setDate(5, Date.valueOf(booking.getBookingEnd()));
+                stmt.setDate(3, Date.valueOf(booking.getBookingEnd()));
             } else {
-                stmt.setNull(5, Types.DATE);
+                stmt.setNull(3, Types.DATE);
             }
 
             stmt.execute();

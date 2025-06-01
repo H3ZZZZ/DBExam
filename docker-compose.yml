@@ -107,6 +107,33 @@ services:
       "
     restart: "no"
 
+  # Spring Boot Backend API
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: airbnb_spring_api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - airbnb_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongo1:
+        condition: service_healthy
+      mongo_init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
   mongo_express:
     image: mongo-express:latest
     container_name: airbnb_mongo_express
@@ -128,7 +155,7 @@ services:
     container_name: airbnb_phpmyadmin
     restart: always
     ports:
-      - "8080:80"
+      - "8082:80"
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306

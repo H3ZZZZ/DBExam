@@ -69,9 +69,9 @@ public class PropertyRatingRepository {
                 Map<String, Object> response = new HashMap<>();
                 response.put("success", true);
                 response.put("property_id", propertyId);
+                response.put("total_reviews", ratingData.getInteger("total_reviews"));
                 response.put("avg_cleanliness_rating", ratingData.getDouble("avg_cleanliness_rating"));
                 response.put("avg_satisfaction_rating", ratingData.getDouble("avg_satisfaction_rating"));
-                response.put("total_reviews", ratingData.getInteger("total_reviews"));
                 return response;
             } else {
                 Map<String, Object> response = new HashMap<>();

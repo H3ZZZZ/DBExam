@@ -136,6 +136,20 @@ BEGIN
     COMMIT;
 END //
 
+CREATE PROCEDURE GetFilteredProperties(
+    IN p_city VARCHAR(50),
+    IN p_price INT,
+    IN p_capacity INT,
+    IN p_city_dist FLOAT,
+    in p_metro_dist FLOAT
+)
+
+BEGIN
+	SELECT *
+	FROM Properties
+	WHERE City = p_city AND Price <= p_price AND Person_capacity >= p_capacity AND Center_distance <= p_city_dist AND Metro_distance <= p_metro_dist;
+END //
+
 CREATE PROCEDURE DeleteProperty(
     IN p_property_id INT
 )

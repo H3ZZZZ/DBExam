@@ -70,6 +70,41 @@ public class PropertyService {
         }
     }
 
+    public List<PropertyDTO> getFilteredProperties(String city, int price, int capacity, float cityDistance, float metroDistance) {
+        List<PropertyDTO> properties = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL GetFilteredProperties(?, ?, ?, ?, ?)}")) {
+
+            stmt.setString(1, city);
+            stmt.setInt(2, price);
+            stmt.setInt(3, capacity);
+            stmt.setFloat(4, cityDistance);
+            stmt.setFloat(5, metroDistance);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    PropertyDTO property = new PropertyDTO();
+                    property.setId(rs.getInt("ID"));
+                    property.setHostId(rs.getInt("Host_ID"));
+                    property.setPrice(rs.getBigDecimal("Price"));
+                    property.setRoomType(rs.getString("Room_type"));
+                    property.setPersonCapacity(rs.getInt("Person_capacity"));
+                    property.setBedrooms(rs.getObject("Bedrooms", Integer.class));
+                    property.setCenterDistance(rs.getObject("Center_distance", BigDecimal.class));
+                    property.setMetroDistance(rs.getObject("Metro_distance", BigDecimal.class));
+                    property.setCity(rs.getString("City"));
+                    properties.add(property);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure GetFilteredProperties", e);
+        }
+
+        return properties;
+    }
+
+
     public List<PropertyDTO> getAllProperties() {
         List<PropertyDTO> properties = new ArrayList<>();
 

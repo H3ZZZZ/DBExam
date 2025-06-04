@@ -11,6 +11,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.stream.Collectors;
 
 @Repository
 public class ReviewRepository {
@@ -295,6 +297,16 @@ public class ReviewRepository {
         return documents.stream()
                 .map(doc -> (Map<String, Object>) new HashMap<>(doc)) // Cast to Map explicitly
                 .toList();
+    }
+
+    public List<Map<String, Object>> getReviewsByPropertyIds(List<Integer> propertyIds) {
+        Query query = new Query(Criteria.where("property_id").in(propertyIds));
+        List<Document> rawResults = mongoTemplate.find(query, Document.class, "reviews");
+
+        // Convert Document to Map<String, Object>
+        return rawResults.stream()
+                .map(doc -> new HashMap<String, Object>(doc))
+                .collect(Collectors.toList());
     }
 
 

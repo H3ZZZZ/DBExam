@@ -11,6 +11,9 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class PropertyService {
@@ -96,6 +99,38 @@ public class PropertyService {
             throw new RuntimeException("Error calling stored procedure DeleteProperty", e);
         }
     }
+
+    public List<Map<String, Object>> getPropertiesByHostId(int hostId) {
+        List<Map<String, Object>> properties = new java.util.ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL GetPropertiesByHostId(?)}")) {
+
+            stmt.setInt(1, hostId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> property = new HashMap<>();
+                    property.put("id", rs.getInt("ID"));
+                    property.put("host_id", rs.getInt("Host_ID"));
+                    property.put("price", rs.getBigDecimal("Price"));
+                    property.put("room_type", rs.getString("Room_type"));
+                    property.put("person_capacity", rs.getInt("Person_capacity"));
+                    property.put("bedrooms", rs.getObject("Bedrooms"));
+                    property.put("center_distance", rs.getObject("Center_distance"));
+                    property.put("metro_distance", rs.getObject("Metro_distance"));
+                    property.put("city", rs.getString("City"));
+                    properties.add(property);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure GetPropertiesByHostId", e);
+        }
+
+        return properties;
+    }
+
+
 
 
 }

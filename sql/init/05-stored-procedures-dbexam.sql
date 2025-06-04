@@ -94,6 +94,11 @@ BEGIN
     SELECT * FROM Properties WHERE ID = p_property_id;
 END //
 
+CREATE PROCEDURE GetPropertiesByHostId(IN p_host_id INT)
+BEGIN
+SELECT * FROM Properties WHERE Host_ID = p_host_id;
+END //
+
 CREATE PROCEDURE UpdateProperty(
     IN p_property_id INT,
     IN p_price DECIMAL(10,2),
@@ -145,6 +150,11 @@ CREATE PROCEDURE GetBooking(
 
 BEGIN
     SELECT * FROM Bookings WHERE ID = p_booking_id;
+END //
+
+CREATE PROCEDURE GetBookingsByPropertyId(IN p_property_id INT)
+BEGIN
+SELECT * FROM Bookings WHERE Property_ID = p_property_id;
 END //
 
 CREATE PROCEDURE GetBookingsByGuestId(IN p_guest_id INT)

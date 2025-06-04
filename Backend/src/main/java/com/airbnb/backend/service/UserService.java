@@ -10,6 +10,8 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class UserService {
@@ -29,6 +31,30 @@ public class UserService {
         } catch (SQLException e) {
             throw new RuntimeException("Error calling stored procedure AddUser", e);
         }
+    }
+
+    public List<UserDTO> getAllUsers() {
+        List<UserDTO> users = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL GetAllUsers()}")) {
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    UserDTO user = new UserDTO();
+                    user.setId(rs.getInt("ID"));
+                    user.setName(rs.getString("Name"));
+                    user.setEmail(rs.getString("Email"));
+                    user.setMobile(rs.getString("Mobile"));
+                    users.add(user);
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure GetAllUsers", e);
+        }
+
+        return users;
     }
 
     public UserDTO getUserByEmail(String email) {

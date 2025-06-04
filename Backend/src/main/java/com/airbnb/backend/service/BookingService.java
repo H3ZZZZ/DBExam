@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class BookingService {
@@ -29,6 +31,33 @@ public class BookingService {
             throw new RuntimeException("Error calling stored procedure AddBooking", e);
         }
     }
+
+    public List<BookingDTO> getAllBookings() {
+        List<BookingDTO> bookings = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL GetAllBookings()}")) {
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    BookingDTO booking = new BookingDTO();
+                    booking.setId(rs.getInt("ID"));
+                    booking.setPropertyId(rs.getInt("Property_ID"));
+                    booking.setGuestId(rs.getInt("Guest_ID"));
+                    booking.setPrice(rs.getBigDecimal("Price"));
+                    booking.setBookingStart(rs.getDate("Booking_start").toLocalDate());
+                    booking.setBookingEnd(rs.getDate("Booking_end").toLocalDate());
+                    bookings.add(booking);
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure GetAllBookings", e);
+        }
+
+        return bookings;
+    }
+
 
     public BookingDTO getBookingById(int bookingId) {
         try (Connection conn = dataSource.getConnection();

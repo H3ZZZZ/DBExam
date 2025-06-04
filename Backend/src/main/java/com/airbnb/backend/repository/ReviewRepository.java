@@ -7,12 +7,10 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
-import java.util.Date;
 
 @Repository
 public class ReviewRepository {
@@ -38,32 +36,10 @@ public class ReviewRepository {
                 new Document("$match", new Document("property_id", propertyId)),
                 new Document("$addFields", new Document()
                     .append("review_age_days", new Document("$divide", Arrays.asList(
-                        new Document("$subtract", Arrays.asList(new Date(), "$created_at")),
+                        new Document("$subtract", Arrays.asList(new java.util.Date(), "$created_at")),
                         86400000
                     )))
                     .append("overall_rating", new Document("$avg", Arrays.asList("$cleanliness_rating", "$guest_satisfaction")))
-                    .append("rating_category", new Document("$switch", new Document()
-                        .append("branches", Arrays.asList(
-                            new Document("case", new Document("$gte", Arrays.asList("$guest_satisfaction", 4)))
-                                .append("then", "Excellent"),
-                            new Document("case", new Document("$gte", Arrays.asList("$guest_satisfaction", 3)))
-                                .append("then", "Good"),
-                            new Document("case", new Document("$gte", Arrays.asList("$guest_satisfaction", 2)))
-                                .append("then", "Fair")
-                        ))
-                        .append("default", "Poor")
-                    ))
-                ),
-                new Document("$project", new Document()
-                    .append("property_id", 1)
-                    .append("booking_id", 1)
-                    .append("cleanliness_rating", 1)
-                    .append("guest_satisfaction", 1)
-                    .append("text_comment", 1)
-                    .append("created_at", 1)
-                    .append("review_age_days", new Document("$round", Arrays.asList("$review_age_days", 1)))
-                    .append("overall_rating", new Document("$round", Arrays.asList("$overall_rating", 2)))
-                    .append("rating_category", 1)
                 ),
                 new Document("$sort", new Document(validatedSortBy, sortDirection)),
                 new Document("$skip", skip),
@@ -75,42 +51,23 @@ public class ReviewRepository {
                 .into(new java.util.ArrayList<>());
             
             // Get total count for pagination
-            List<Document> countPipeline = Arrays.asList(
-                new Document("$match", new Document("property_id", propertyId)),
-                new Document("$count", "total")
+            long totalReviews = mongoTemplate.count(
+                new Query(Criteria.where("property_id").is(propertyId)), 
+                "reviews"
             );
             
-            List<Document> countResult = mongoTemplate.getCollection("reviews")
-                .aggregate(countPipeline)
-                .into(new java.util.ArrayList<>());
-            
-            long totalReviews = !countResult.isEmpty() ? countResult.get(0).getInteger("total") : 0;
-            
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
             response.put("property_id", propertyId);
             response.put("reviews", reviews);
-            
-            // Pagination metadata
-            Map<String, Object> paginationInfo = new HashMap<>();
-            paginationInfo.put("total_reviews", totalReviews);
-            paginationInfo.put("returned_count", reviews.size());
-            paginationInfo.put("limit", limit);
-            paginationInfo.put("skip", skip);
-            paginationInfo.put("has_next", (skip + limit) < totalReviews);
-            paginationInfo.put("has_previous", skip > 0);
-            response.put("pagination", paginationInfo);
-            
-            // Sorting metadata
-            Map<String, Object> sortingInfo = new HashMap<>();
-            sortingInfo.put("sort_by", validatedSortBy);
-            sortingInfo.put("sort_order", sortOrder);
-            response.put("sorting", sortingInfo);
+            response.put("total_count", totalReviews);
+            response.put("returned_count", reviews.size());
             
             return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
+            response.put("property_id", propertyId);
             response.put("error", "Error retrieving reviews: " + e.getMessage());
             return response;
         }
@@ -131,16 +88,20 @@ public class ReviewRepository {
             
             mongoTemplate.insert(review, "reviews");
             
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
-            response.put("message", "Review added successfully");
             response.put("property_id", propertyId);
             response.put("booking_id", bookingId);
-            response.put("review_data", review);
+            response.put("review_id", review.getObjectId("_id").toString());
+            response.put("cleanliness_rating", cleanlinessRating);
+            response.put("guest_satisfaction", satisfactionRating);
+            response.put("message", "Review added successfully");
             return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
+            response.put("property_id", propertyId);
+            response.put("booking_id", bookingId);
             response.put("error", "Review insertion error: " + e.getMessage());
             return response;
         }
@@ -173,7 +134,6 @@ public class ReviewRepository {
                 new Document("$match", matchCriteria),
                 new Document("$addFields", new Document()
                     .append("overall_rating", new Document("$avg", Arrays.asList("$cleanliness_rating", "$guest_satisfaction")))
-                    .append("review_length", new Document("$strLenCP", "$text_comment"))
                 ),
                 new Document("$sort", new Document(validatedSortBy, sortDirection)),
                 new Document("$skip", skip),
@@ -196,23 +156,15 @@ public class ReviewRepository {
             
             long totalReviews = !countResult.isEmpty() ? countResult.get(0).getInteger("total") : 0;
             
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
             response.put("reviews", reviews);
             response.put("total_count", totalReviews);
             response.put("returned_count", reviews.size());
             
-            // Filters applied metadata
-            Map<String, Object> filtersApplied = new HashMap<>();
-            filtersApplied.put("min_rating", minRating);
-            filtersApplied.put("max_rating", maxRating);
-            filtersApplied.put("sort_by", validatedSortBy);
-            filtersApplied.put("sort_order", sortOrder);
-            response.put("filters_applied", filtersApplied);
-            
             return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
             response.put("error", "Advanced filtering error: " + e.getMessage());
             return response;
@@ -235,27 +187,6 @@ public class ReviewRepository {
                     .append("min_cleanliness", new Document("$min", "$cleanliness_rating"))
                     .append("max_satisfaction", new Document("$max", "$guest_satisfaction"))
                     .append("min_satisfaction", new Document("$min", "$guest_satisfaction"))
-                    .append("reviews", new Document("$push", "$$ROOT"))
-                ),
-                new Document("$addFields", new Document()
-                    .append("rating_distribution", new Document("$map", new Document()
-                        .append("input", Arrays.asList(1, 2, 3, 4, 5))
-                        .append("as", "rating")
-                        .append("in", new Document()
-                            .append("rating", "$$rating")
-                            .append("count", new Document("$size", new Document("$filter", new Document()
-                                .append("input", "$reviews")
-                                .append("cond", new Document("$eq", Arrays.asList("$$this.guest_satisfaction", "$$rating")))
-                            )))
-                        )
-                    ))
-                    .append("recent_trend", new Document("$slice", Arrays.asList(
-                        new Document("$sortArray", new Document()
-                            .append("input", "$reviews")
-                            .append("sortBy", new Document("created_at", -1))
-                        ),
-                        5
-                    )))
                 )
             );
             
@@ -263,21 +194,31 @@ public class ReviewRepository {
                 .aggregate(analyticsPipeline)
                 .into(new java.util.ArrayList<>());
             
-            Map<String, Object> response = new HashMap<>();
             if (!results.isEmpty()) {
                 Document analytics = results.get(0);
+                Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", true);
                 response.put("property_id", propertyId);
-                response.put("analytics", analytics);
+                response.put("total_reviews", analytics.getInteger("total_reviews"));
+                response.put("avg_cleanliness_rating", analytics.getDouble("avg_cleanliness"));
+                response.put("avg_satisfaction_rating", analytics.getDouble("avg_satisfaction"));
+                response.put("rating_ranges", Map.of(
+                    "cleanliness", Map.of("min", analytics.getInteger("min_cleanliness"), "max", analytics.getInteger("max_cleanliness")),
+                    "satisfaction", Map.of("min", analytics.getInteger("min_satisfaction"), "max", analytics.getInteger("max_satisfaction"))
+                ));
+                return response;
             } else {
+                Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", false);
+                response.put("property_id", propertyId);
                 response.put("message", "No reviews found for analytics");
+                return response;
             }
             
-            return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
+            response.put("property_id", propertyId);
             response.put("error", "Analytics generation error: " + e.getMessage());
             return response;
         }
@@ -306,18 +247,25 @@ public class ReviewRepository {
                 .aggregate(summaryPipeline)
                 .into(new java.util.ArrayList<>());
             
-            Map<String, Object> response = new HashMap<>();
             if (!results.isEmpty()) {
+                Document summary = results.get(0);
+                Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", true);
-                response.put("summary", results.get(0));
+                response.put("total_reviews", summary.getInteger("total_reviews"));
+                response.put("unique_properties", summary.getInteger("unique_property_count"));
+                response.put("avg_reviews_per_property", summary.getDouble("avg_reviews_per_property"));
+                response.put("overall_avg_cleanliness", summary.getDouble("avg_cleanliness_overall"));
+                response.put("overall_avg_satisfaction", summary.getDouble("avg_satisfaction_overall"));
+                return response;
             } else {
+                Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", false);
                 response.put("message", "No review data available");
+                return response;
             }
             
-            return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
             response.put("error", "Summary generation error: " + e.getMessage());
             return response;

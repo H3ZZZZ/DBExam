@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
@@ -66,22 +66,25 @@ public class PropertyRatingRepository {
                 
                 mongoTemplate.upsert(query, update, "property_ratings");
                 
-                Map<String, Object> response = new HashMap<>();
+                Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", true);
                 response.put("property_id", propertyId);
-                response.put("total_reviews", ratingData.getInteger("total_reviews"));
                 response.put("avg_cleanliness_rating", ratingData.getDouble("avg_cleanliness_rating"));
                 response.put("avg_satisfaction_rating", ratingData.getDouble("avg_satisfaction_rating"));
+                response.put("total_reviews", ratingData.getInteger("total_reviews"));
+                response.put("message", "Rating calculated successfully");
                 return response;
             } else {
-                Map<String, Object> response = new HashMap<>();
+                Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", false);
-                response.put("message", "No reviews found for property " + propertyId);
+                response.put("property_id", propertyId);
+                response.put("message", "No reviews found for property");
                 return response;
             }
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
+            response.put("property_id", propertyId);
             response.put("error", "Rating calculation error: " + e.getMessage());
             return response;
         }
@@ -111,13 +114,14 @@ public class PropertyRatingRepository {
                 }
             }
             
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
             response.put("total_properties", propertyResults.size());
-            response.put("processed", processed);
+            response.put("processed_successfully", processed);
+            response.put("message", "Batch rating recalculation completed");
             return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
             response.put("error", "Batch processing error: " + e.getMessage());
             return response;
@@ -132,18 +136,26 @@ public class PropertyRatingRepository {
             Query query = new Query(Criteria.where("property_id").is(propertyId));
             Document rating = mongoTemplate.findOne(query, Document.class, "property_ratings");
             
-            Map<String, Object> response = new HashMap<>();
             if (rating != null) {
+                Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", true);
-                response.put("data", rating);
+                response.put("property_id", propertyId);
+                response.put("avg_cleanliness_rating", rating.getDouble("avg_cleanliness_rating"));
+                response.put("avg_satisfaction_rating", rating.getDouble("avg_satisfaction_rating"));
+                response.put("total_reviews", rating.getInteger("total_reviews"));
+                response.put("last_updated", rating.getDate("last_updated"));
+                return response;
             } else {
+                Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", false);
-                response.put("message", "No rating found for property " + propertyId);
+                response.put("property_id", propertyId);
+                response.put("message", "No rating found for property");
+                return response;
             }
-            return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
+            response.put("property_id", propertyId);
             response.put("error", "Rating retrieval error: " + e.getMessage());
             return response;
         }
@@ -170,15 +182,14 @@ public class PropertyRatingRepository {
             
             long total = mongoTemplate.count(new Query(), "property_ratings");
             
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
-            response.put("data", ratings);
-            response.put("total", total);
-            response.put("limit", limit);
-            response.put("skip", skip);
+            response.put("ratings", ratings);
+            response.put("total_count", total);
+            response.put("returned_count", ratings.size());
             return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
             response.put("error", "Pagination error: " + e.getMessage());
             return response;
@@ -207,13 +218,14 @@ public class PropertyRatingRepository {
                 .aggregate(topRatedPipeline)
                 .into(new java.util.ArrayList<>());
             
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
             response.put("rating_type", ratingType);
-            response.put("data", ratings);
+            response.put("top_properties", ratings);
+            response.put("returned_count", ratings.size());
             return response;
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
             response.put("error", "Top rated query error: " + e.getMessage());
             return response;

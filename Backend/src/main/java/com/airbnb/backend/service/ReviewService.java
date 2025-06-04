@@ -8,8 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Arrays;
+import java.util.LinkedHashMap;
 
 @Service
 public class ReviewService {
@@ -34,53 +33,50 @@ public class ReviewService {
      * Add a new review with comprehensive validation using MySQL stored procedures
      */
     public Map<String, Object> addReview(Integer propertyId, Integer bookingId, Integer cleanlinessRating, Integer satisfactionRating, String comment) {
-        Map<String, Object> result = new HashMap<>();
-        
         try {
             // Step 1: Validate input parameters
             if (!isValidReview(cleanlinessRating, satisfactionRating, comment)) {
-                result.put("success", false);
-                result.put("error", "Invalid review parameters - ratings must be 0-100, comment must be 1-1000 characters");
-                result.put("validation_stage", "input_validation");
-                return result;
+                Map<String, Object> response = new LinkedHashMap<>();
+                response.put("success", false);
+                response.put("property_id", propertyId);
+                response.put("booking_id", bookingId);
+                response.put("error", "Invalid review parameters - ratings must be 0-100, comment must be 1-1000 characters");
+                return response;
             }
             
             // Step 2: Check booking exists and matches property
             boolean bookingValid = validateBookingExists(bookingId, propertyId);
             if (!bookingValid) {
-                result.put("success", false);
-                result.put("error", "Invalid booking - booking_id " + bookingId + " not found for property_id " + propertyId);
-                result.put("validation_stage", "mysql_stored_procedure_validation");
-                result.put("stored_procedure_used", "ValidateBookingExists");
-                return result;
+                Map<String, Object> response = new LinkedHashMap<>();
+                response.put("success", false);
+                response.put("property_id", propertyId);
+                response.put("booking_id", bookingId);
+                response.put("error", "Invalid booking - booking_id " + bookingId + " not found for property_id " + propertyId);
+                return response;
             }
             
             // Step 3: Enforce business rule - booking must be completed
             boolean bookingCompleted = isBookingCompleted(bookingId);
             if (!bookingCompleted) {
-                result.put("success", false);
-                result.put("error", "Review cannot be created - booking_id " + bookingId + " is not yet completed. Reviews are only allowed after booking end date has passed.");
-                result.put("validation_stage", "business_rule_validation");
-                result.put("stored_procedure_used", "IsBookingCompleted");
-                result.put("booking_status", "active or upcoming");
-                result.put("business_rule", "Reviews can only be created for completed bookings");
-                result.put("validation_details", createValidationMetadata(bookingId, propertyId, bookingCompleted));
-                return result;
+                Map<String, Object> response = new LinkedHashMap<>();
+                response.put("success", false);
+                response.put("property_id", propertyId);
+                response.put("booking_id", bookingId);
+                response.put("booking_status", "active or upcoming");
+                response.put("error", "Review cannot be created - booking is not yet completed");
+                return response;
             }
             
             // Step 4: Create review in MongoDB
-            Map<String, Object> mongoResult = reviewRepository.addReview(propertyId, bookingId, cleanlinessRating, satisfactionRating, comment);
-            
-            // Step 5: Add validation metadata
-            mongoResult.put("validation_details", createValidationMetadata(bookingId, propertyId, bookingCompleted));
-            
-            return mongoResult;
+            return reviewRepository.addReview(propertyId, bookingId, cleanlinessRating, satisfactionRating, comment);
             
         } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", "Cross-database validation error: " + e.getMessage());
-            result.put("validation_stage", "stored_procedure_error");
-            return result;
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", false);
+            response.put("property_id", propertyId);
+            response.put("booking_id", bookingId);
+            response.put("error", "Cross-database validation error: " + e.getMessage());
+            return response;
         }
     }
     
@@ -93,10 +89,13 @@ public class ReviewService {
         if (reviewResult != null && Boolean.TRUE.equals(reviewResult.get("success"))) {
             Map<String, Object> ratingResult = propertyRatingService.updatePropertyRatingAfterNewReview(propertyId);
             
-            // Organize response metadata
-            reviewResult.put("rating_update", ratingResult);
-            reviewResult.put("cross_service_operation", true);
-            reviewResult.put("workflow_completed", "MySQL validation -> MongoDB review -> MongoDB rating update");
+            // Add rating update info to the review result
+            reviewResult.put("rating_updated", Boolean.TRUE.equals(ratingResult.get("success")));
+            if (Boolean.TRUE.equals(ratingResult.get("success"))) {
+                reviewResult.put("new_avg_cleanliness", ratingResult.get("avg_cleanliness_rating"));
+                reviewResult.put("new_avg_satisfaction", ratingResult.get("avg_satisfaction_rating"));
+                reviewResult.put("total_reviews", ratingResult.get("total_reviews"));
+            }
         }
         
         return reviewResult;
@@ -140,7 +139,7 @@ public class ReviewService {
     }
     
     /**
-     * Get reviews with enriched guest information from MySQL using stored procedures (demonstrates cross-database data transformation)
+     * Get reviews with enriched guest information from MySQL using stored procedures
      */
     public Map<String, Object> getReviewsWithGuestInfo(Integer propertyId) {
         Map<String, Object> reviewsResult = reviewRepository.getPropertyReviews(propertyId, 10, 0, "created_at", "desc");
@@ -152,123 +151,62 @@ public class ReviewService {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> reviews = (List<Map<String, Object>>) reviewsResult.get("reviews");
         
-        // Enhanced enrichment with better error handling
-        int transformationSuccessCount = 0;
-        int transformationErrorCount = 0;
+        int enrichedCount = 0;
         
         // Enrich reviews with guest information from MySQL via booking_id using stored procedures
         for (Map<String, Object> review : reviews) {
             Integer bookingId = (Integer) review.get("booking_id");
             if (bookingId != null) {
                 try {
-                    // REAL CROSS-DATABASE TRANSFORMATION: MongoDB booking_id -> MySQL stored procedure call
                     Map<String, Object> bookingInfo = bookingRepository.getGuestInfoFromBooking(bookingId);
                     
                     if (bookingInfo != null) {
                         review.put("guest_name", bookingInfo.get("guest_name"));
                         review.put("guest_email", bookingInfo.get("guest_email"));
-                        review.put("booking_status", bookingInfo.get("booking_status"));
                         review.put("booking_price", bookingInfo.get("booking_price"));
-                        review.put("booking_start", bookingInfo.get("booking_start"));
-                        review.put("booking_end", bookingInfo.get("booking_end"));
-                        review.put("data_source", "MySQL stored procedure: GetGuestInfoFromBooking");
-                        review.put("transformation_success", true);
-                        review.put("stored_procedure_used", true);
-                        transformationSuccessCount++;
+                        enrichedCount++;
                     } else {
                         review.put("guest_name", "Booking not found");
-                        review.put("data_source", "MySQL stored procedure returned null");
-                        review.put("transformation_success", false);
-                        review.put("stored_procedure_used", true);
-                        transformationErrorCount++;
                     }
                 } catch (Exception e) {
-                    review.put("guest_name", "MySQL Stored Procedure Error");
-                    review.put("data_source", "Stored procedure transformation failed: " + e.getMessage());
-                    review.put("transformation_success", false);
-                    review.put("stored_procedure_used", true);
-                    transformationErrorCount++;
+                    review.put("guest_name", "MySQL error");
                 }
             } else {
                 review.put("guest_name", "No booking_id");
-                review.put("transformation_success", false);
-                review.put("stored_procedure_used", false);
-                transformationErrorCount++;
             }
         }
         
-        // Enhanced metadata about the REAL transformation process using stored procedures
-        Map<String, Object> transformationInfo = new HashMap<>();
+        // Clean response structure
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("property_id", propertyId);
+        response.put("reviews_with_guest_info", reviews);
+        response.put("total_reviews", reviewsResult.get("total_count"));
+        response.put("enriched_reviews", enrichedCount);
+        response.put("cross_database_note", "MongoDB reviews + MySQL guest data");
         
-        // Process Summary
-        transformationInfo.put("description", "REAL Cross-database data transformation using MySQL stored procedures");
-        transformationInfo.put("process", "MongoDB reviews -> booking_id -> MySQL stored procedure GetGuestInfoFromBooking -> guest enrichment");
-        
-        // Results
-        transformationInfo.put("total_reviews", reviews.size());
-        transformationInfo.put("success_count", transformationSuccessCount);
-        transformationInfo.put("error_count", transformationErrorCount);
-        
-        // Technical Details
-        transformationInfo.put("stored_procedure", "CALL GetGuestInfoFromBooking(?)");
-        transformationInfo.put("transformation_type", "Real-time SimpleJdbcCall MySQL stored procedure integration");
-        transformationInfo.put("databases_involved", Arrays.asList("MongoDB (reviews collection)", "MySQL (stored procedures: GetGuestInfoFromBooking)"));
-        transformationInfo.put("architecture", "Dual stored procedure approach: MongoDB aggregation pipelines + MySQL stored procedures");
-        
-        reviewsResult.put("transformation_info", transformationInfo);
-        return reviewsResult;
+        return response;
     }
     
     /**
-     * Validate booking exists in MySQL using stored procedure (real database query)
+     * Validate booking exists using MySQL stored procedure
      */
     public boolean validateBookingExists(Integer bookingId, Integer propertyId) {
         try {
             return bookingRepository.validateBookingExists(bookingId, propertyId);
         } catch (Exception e) {
-            // If there's an error, return false but log it
-            System.err.println("MySQL stored procedure validation error: " + e.getMessage());
             return false;
         }
     }
     
     /**
-     * Check if booking is completed using stored procedure (real database query)
+     * Check if booking is completed using MySQL stored procedure
      */
     public boolean isBookingCompleted(Integer bookingId) {
         try {
             return bookingRepository.isBookingCompleted(bookingId);
         } catch (Exception e) {
-            System.err.println("MySQL stored procedure booking completion check error: " + e.getMessage());
             return false;
         }
-    }
-    
-    /**
-     * Create validation metadata for documentation purposes
-     */
-    private Map<String, Object> createValidationMetadata(Integer bookingId, Integer propertyId, boolean bookingCompleted) {
-        Map<String, Object> metadata = new HashMap<>();
-        
-        // Business Rule Status
-        metadata.put("business_rule_enforced", "Reviews can only be created for completed bookings");
-        metadata.put("booking_completed", bookingCompleted);
-        
-        if (bookingCompleted) {
-            metadata.put("review_creation_status", "Allowed - booking has been completed");
-        } else {
-            metadata.put("review_creation_status", "Blocked - booking is still active or upcoming");
-        }
-        
-        // Database Operations
-        metadata.put("booking_validation", "MySQL stored procedure: ValidateBookingExists(" + bookingId + ", " + propertyId + ")");
-        metadata.put("completion_check", "MySQL stored procedure: IsBookingCompleted(" + bookingId + ")");
-        
-        // Architecture Details
-        metadata.put("validation_approach", "Cross-database stored procedure validation before MongoDB insert");
-        metadata.put("data_integrity", "Ensures MongoDB reviews reference valid completed MySQL bookings");
-        metadata.put("architecture_benefit", "Demonstrates ACID validation with eventual consistency analytics");
-        
-        return metadata;
     }
 } 

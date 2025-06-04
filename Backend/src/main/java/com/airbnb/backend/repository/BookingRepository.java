@@ -9,9 +9,7 @@ import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Types;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Repository
@@ -32,7 +30,7 @@ public class BookingRepository {
                     new SqlParameter("p_booking_id", Types.INTEGER)
                 )
                 .returningResultSet("booking_info", (rs, rowNum) -> {
-                    Map<String, Object> result = new HashMap<>();
+                    Map<String, Object> result = new LinkedHashMap<>();
                     result.put("booking_id", rs.getInt("booking_id"));
                     result.put("property_id", rs.getInt("property_id"));
                     result.put("guest_id", rs.getInt("guest_id"));
@@ -46,7 +44,7 @@ public class BookingRepository {
                     return result;
                 });
             
-            Map<String, Object> inParams = new HashMap<>();
+            Map<String, Object> inParams = new LinkedHashMap<>();
             inParams.put("p_booking_id", bookingId);
             
             Map<String, Object> result = jdbcCall.execute(inParams);
@@ -78,7 +76,7 @@ public class BookingRepository {
                     new SqlOutParameter("p_exists", Types.BOOLEAN)
                 );
             
-            Map<String, Object> inParams = new HashMap<>();
+            Map<String, Object> inParams = new LinkedHashMap<>();
             inParams.put("p_booking_id", bookingId);
             inParams.put("p_property_id", propertyId);
             
@@ -112,7 +110,7 @@ public class BookingRepository {
                     new SqlOutParameter("p_completed", Types.BOOLEAN)
                 );
             
-            Map<String, Object> inParams = new HashMap<>();
+            Map<String, Object> inParams = new LinkedHashMap<>();
             inParams.put("p_booking_id", bookingId);
             
             Map<String, Object> result = jdbcCall.execute(inParams);
@@ -141,7 +139,7 @@ public class BookingRepository {
                 .withProcedureName("GetAllBookings")
                 .withoutProcedureColumnMetaDataAccess()
                 .returningResultSet("bookings", (rs, rowNum) -> {
-                    Map<String, Object> booking = new HashMap<>();
+                    Map<String, Object> booking = new LinkedHashMap<>();
                     booking.put("booking_id", rs.getInt("booking_id"));
                     booking.put("property_id", rs.getInt("property_id"));
                     booking.put("guest_id", rs.getInt("guest_id"));
@@ -157,16 +155,16 @@ public class BookingRepository {
             @SuppressWarnings("unchecked")
             var bookings = (java.util.List<Map<String, Object>>) result.get("bookings");
             
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
             response.put("bookings", bookings);
-            response.put("data_source", "MySQL stored procedure: GetAllBookings");
             response.put("total_returned", bookings != null ? bookings.size() : 0);
+            response.put("data_source", "MySQL stored procedure: GetAllBookings");
             
             return response;
             
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", false);
             response.put("error", "Error calling stored procedure GetAllBookings: " + e.getMessage());
             return response;

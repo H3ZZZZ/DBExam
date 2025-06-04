@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -37,7 +37,7 @@ public class ReviewController {
     
     @PostMapping("/add")
     @Operation(summary = "Add a new review with stored procedure validation", 
-               description = "Add a review with comprehensive validation using MySQL stored procedures (ValidateBookingExists, IsBookingCompleted). BUSINESS RULE: Reviews can only be created for completed bookings.")
+               description = "Add a review with comprehensive validation using MySQL stored procedures. Reviews can only be created for completed bookings.")
     public ResponseEntity<Map<String, Object>> addReview(
             @RequestParam Integer propertyId,
             @RequestParam Integer bookingId,
@@ -45,12 +45,17 @@ public class ReviewController {
             @RequestParam Integer satisfactionRating,
             @RequestParam String comment) {
         Map<String, Object> result = reviewService.addReview(propertyId, bookingId, cleanlinessRating, satisfactionRating, comment);
-        return ResponseEntity.ok(result);
+        
+        if (Boolean.TRUE.equals(result.get("success"))) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.badRequest().body(result);
+        }
     }
     
     @PostMapping("/add-with-rating-update")
-    @Operation(summary = "Add review and update property rating with stored procedure validation", 
-               description = "Add a review with MySQL stored procedure validation and automatically trigger MongoDB aggregation pipeline rating recalculation. BUSINESS RULE: Reviews can only be created for completed bookings.")
+    @Operation(summary = "Add review and update property rating", 
+               description = "Add a review with MySQL stored procedure validation and automatically trigger MongoDB aggregation pipeline rating recalculation.")
     public ResponseEntity<Map<String, Object>> addReviewWithRatingUpdate(
             @RequestParam Integer propertyId,
             @RequestParam Integer bookingId,
@@ -58,7 +63,12 @@ public class ReviewController {
             @RequestParam Integer satisfactionRating,
             @RequestParam String comment) {
         Map<String, Object> result = reviewService.addReviewWithRatingUpdate(propertyId, bookingId, cleanlinessRating, satisfactionRating, comment);
-        return ResponseEntity.ok(result);
+        
+        if (Boolean.TRUE.equals(result.get("success"))) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.badRequest().body(result);
+        }
     }
     
     @GetMapping("/all")
@@ -77,7 +87,7 @@ public class ReviewController {
     
     @GetMapping("/analytics/{propertyId}")
     @Operation(summary = "Get review analytics for a property", 
-               description = "Generate advanced analytics and trends for property reviews using MongoDB aggregation pipelines")
+               description = "Generate analytics and trends for property reviews using MongoDB aggregation pipelines")
     public ResponseEntity<Map<String, Object>> getReviewAnalytics(@PathVariable Integer propertyId) {
         Map<String, Object> result = reviewService.getReviewAnalytics(propertyId);
         return ResponseEntity.ok(result);
@@ -93,7 +103,7 @@ public class ReviewController {
     
     @GetMapping("/property/{propertyId}/with-guest-info")
     @Operation(summary = "Get reviews with cross-database guest information", 
-               description = "Demonstrates REAL cross-database data transformation: MongoDB reviews enriched with MySQL guest data via booking_id using stored procedure GetGuestInfoFromBooking")
+               description = "Demonstrates cross-database data transformation: MongoDB reviews enriched with MySQL guest data via stored procedures")
     public ResponseEntity<Map<String, Object>> getReviewsWithGuestInfo(@PathVariable Integer propertyId) {
         Map<String, Object> result = reviewService.getReviewsWithGuestInfo(propertyId);
         return ResponseEntity.ok(result);
@@ -101,131 +111,81 @@ public class ReviewController {
     
     @GetMapping("/validate-booking/{bookingId}/{propertyId}")
     @Operation(summary = "Validate booking for review creation", 
-               description = "Demonstrates MySQL stored procedure integration: ValidateBookingExists and IsBookingCompleted for review validation. BUSINESS RULE: Reviews require completed bookings.")
+               description = "Demonstrates MySQL stored procedure integration for review validation")
     public ResponseEntity<Map<String, Object>> validateBookingForReview(
             @PathVariable Integer bookingId, 
             @PathVariable Integer propertyId) {
         
-        Map<String, Object> result = new HashMap<>();
-        
         try {
-            // Step 1: Validate booking exists using stored procedure
-            boolean bookingExists = reviewService.validateBookingExists(bookingId, propertyId);
+            // Check if booking exists and matches property
+            boolean bookingValid = reviewService.validateBookingExists(bookingId, propertyId);
+            if (!bookingValid) {
+                Map<String, Object> response = new LinkedHashMap<>();
+                response.put("success", false);
+                response.put("property_id", propertyId);
+                response.put("booking_id", bookingId);
+                response.put("error", "Invalid booking - booking not found for property");
+                return ResponseEntity.badRequest().body(response);
+            }
             
-            // Step 2: Check if booking is completed using stored procedure
+            // Check if booking is completed
             boolean bookingCompleted = reviewService.isBookingCompleted(bookingId);
             
-            // Step 3: Get detailed booking information using stored procedure
+            // Get additional booking information
             Map<String, Object> bookingInfo = bookingRepository.getGuestInfoFromBooking(bookingId);
             
-            // Build comprehensive response
-            result.put("success", true);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("property_id", propertyId);
+            response.put("booking_id", bookingId);
+            response.put("booking_valid", true);
+            response.put("booking_completed", bookingCompleted);
+            response.put("can_create_review", bookingCompleted);
+            response.put("guest_name", bookingInfo != null ? bookingInfo.get("guest_name") : "Unknown");
+            response.put("booking_price", bookingInfo != null ? bookingInfo.get("booking_price") : null);
             
-            // Validation Results
-            result.put("booking_exists", bookingExists);
-            result.put("booking_completed", bookingCompleted);
-            result.put("can_create_review", bookingExists && bookingCompleted);
-            
-            // Business Rule
-            result.put("business_rule", "Reviews can only be created for completed bookings");
-            
-            // Status and Recommendation
-            if (bookingCompleted && bookingExists) {
-                result.put("status", "Ready for review");
-                result.put("recommendation", "Review creation allowed - booking is completed");
-            } else if (bookingExists && !bookingCompleted) {
-                result.put("status", "Booking active or upcoming");
-                result.put("recommendation", "Review creation blocked - booking not yet completed");
-            } else {
-                result.put("status", "Invalid booking");
-                result.put("recommendation", "Review creation blocked - booking not found");
-            }
-            
-            // Booking Details
-            if (bookingInfo != null) {
-                result.put("booking_details", bookingInfo);
-            }
-            
-            // Technical Documentation
-            Map<String, Object> storedProcedures = new HashMap<>();
-            storedProcedures.put("database", "MySQL");
-            storedProcedures.put("validation_procedure", "CALL ValidateBookingExists(" + bookingId + ", " + propertyId + ")");
-            storedProcedures.put("completion_procedure", "CALL IsBookingCompleted(" + bookingId + ")");
-            storedProcedures.put("info_procedure", "CALL GetGuestInfoFromBooking(" + bookingId + ")");
-            storedProcedures.put("architecture", "Dual stored procedure approach demonstrating traditional SQL procedures");
-            storedProcedures.put("business_rule_enforcement", "Reviews require both valid and completed bookings");
-            
-            result.put("stored_procedures_used", storedProcedures);
-            
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", "MySQL stored procedure validation error: " + e.getMessage());
-            result.put("booking_id", bookingId);
-            result.put("property_id", propertyId);
-            return ResponseEntity.status(500).body(result);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", false);
+            response.put("property_id", propertyId);
+            response.put("booking_id", bookingId);
+            response.put("error", "MySQL stored procedure validation error: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
     
     @GetMapping("/cross-database-demo/{propertyId}")
-    @Operation(summary = "Comprehensive cross-database integration demonstration", 
-               description = "Complete demonstration of dual stored procedure architecture: MySQL procedures + MongoDB aggregation pipelines")
+    @Operation(summary = "Cross-database integration demonstration", 
+               description = "Complete demonstration of dual database architecture: MySQL procedures + MongoDB aggregation pipelines")
     public ResponseEntity<Map<String, Object>> crossDatabaseDemo(@PathVariable Integer propertyId) {
-        Map<String, Object> result = new HashMap<>();
-        
         try {
-            // Step 1: MongoDB aggregation pipeline - get reviews
+            // Get MongoDB operations
             Map<String, Object> reviewsResult = reviewService.getPropertyReviews(propertyId, 5, 0, "created_at", "desc");
-            
-            // Step 2: MongoDB aggregation pipeline - get analytics
             Map<String, Object> analyticsResult = reviewService.getReviewAnalytics(propertyId);
-            
-            // Step 3: Cross-database transformation - reviews with guest info
             Map<String, Object> enrichedReviews = reviewService.getReviewsWithGuestInfo(propertyId);
             
-            // Step 4: MySQL stored procedure - get all related bookings
+            // Get MySQL operations
             Map<String, Object> allBookings = bookingRepository.getAllBookings();
             
-            // Build comprehensive demonstration response
-            result.put("success", true);
-            result.put("demonstration_type", "Complete Dual Database Stored Procedure Architecture");
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("property_id", propertyId);
+            response.put("mongodb_reviews", reviewsResult.get("reviews"));
+            response.put("mongodb_analytics", analyticsResult);
+            response.put("cross_database_enriched_reviews", enrichedReviews.get("reviews_with_guest_info"));
+            response.put("mysql_bookings", allBookings.get("bookings"));
+            response.put("demonstration_note", "Dual Database Architecture: MySQL stored procedures + MongoDB aggregation pipelines");
             
-            // MongoDB operations
-            Map<String, Object> mongodbOperations = new HashMap<>();
-            mongodbOperations.put("reviews", reviewsResult);
-            mongodbOperations.put("analytics", analyticsResult);
-            mongodbOperations.put("cross_database_enrichment", enrichedReviews);
-            mongodbOperations.put("approach", "MongoDB aggregation pipelines (modern stored procedure equivalent)");
-            result.put("mongodb_operations", mongodbOperations);
-            
-            // MySQL operations
-            Map<String, Object> mysqlOperations = new HashMap<>();
-            mysqlOperations.put("all_bookings", allBookings);
-            mysqlOperations.put("approach", "Traditional MySQL stored procedures");
-            result.put("mysql_operations", mysqlOperations);
-            
-            // Architecture documentation
-            Map<String, Object> architecture = new HashMap<>();
-            architecture.put("mysql_procedures", new String[]{
-                "ValidateBookingExists", "IsBookingCompleted", "GetGuestInfoFromBooking", "GetAllBookings"
-            });
-            architecture.put("mongodb_pipelines", new String[]{
-                "property reviews aggregation", "review analytics aggregation", "rating calculations aggregation"
-            });
-            architecture.put("data_transformation", "Real-time MongoDB booking_id -> MySQL stored procedure calls -> enriched responses");
-            architecture.put("integration_method", "Spring Boot SimpleJdbcCall + MongoTemplate");
-            architecture.put("academic_value", "Demonstrates both traditional SQL and modern NoSQL stored procedure approaches");
-            
-            result.put("architecture_details", architecture);
-            
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", "Cross-database demonstration error: " + e.getMessage());
-            result.put("property_id", propertyId);
-            return ResponseEntity.status(500).body(result);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", false);
+            response.put("property_id", propertyId);
+            response.put("error", "Cross-database demonstration error: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
 } 

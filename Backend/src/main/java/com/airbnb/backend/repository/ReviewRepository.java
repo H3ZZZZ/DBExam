@@ -339,4 +339,16 @@ public class ReviewRepository {
                 return "created_at";
         }
     }
+
+    public List<Map<String, Object>> getReviewsByBookingIds(List<Integer> bookingIds) {
+        Query query = new Query(Criteria.where("booking_id").in(bookingIds));
+        List<org.bson.Document> documents = mongoTemplate.find(query, org.bson.Document.class, "reviews");
+
+        return documents.stream()
+                .map(doc -> (Map<String, Object>) new HashMap<>(doc)) // Cast to Map explicitly
+                .toList();
+    }
+
+
+
 } 

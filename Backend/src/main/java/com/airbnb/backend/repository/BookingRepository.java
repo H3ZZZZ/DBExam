@@ -9,7 +9,9 @@ import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Repository
@@ -170,4 +172,36 @@ public class BookingRepository {
             return response;
         }
     }
+
+    public List<Map<String, Object>> getBookingsByGuestId(int guestId) {
+        List<Map<String, Object>> bookings = new ArrayList<>();
+
+        try (var conn = jdbcTemplate.getDataSource().getConnection();
+             var stmt = conn.prepareCall("{CALL GetBookingsByGuestId(?)}")) {
+
+            stmt.setInt(1, guestId);
+
+            try (var rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> booking = new HashMap<>();
+                    booking.put("booking_id", rs.getInt("booking_id"));
+                    booking.put("property_id", rs.getInt("property_id"));
+                    booking.put("guest_id", rs.getInt("guest_id"));
+                    booking.put("booking_start", rs.getDate("Booking_start").toLocalDate());
+                    booking.put("booking_end", rs.getDate("Booking_end").toLocalDate());
+                    booking.put("booking_price", rs.getBigDecimal("booking_price"));
+                    bookings.add(booking);
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error calling stored procedure GetBookingsByGuestId", e);
+        }
+
+        return bookings;
+    }
+
+
+
+
 } 

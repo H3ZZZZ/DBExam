@@ -201,6 +201,32 @@ public class BookingRepository {
         return bookings;
     }
 
+    public List<Map<String, Object>> getBookingsByPropertyId(int propertyId) {
+        List<Map<String, Object>> bookings = new ArrayList<>();
+
+        try (var conn = jdbcTemplate.getDataSource().getConnection();
+             var stmt = conn.prepareCall("{CALL GetBookingsByPropertyId(?)}")) {
+
+            stmt.setInt(1, propertyId);
+
+            try (var rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> booking = new HashMap<>();
+                    booking.put("booking_id", rs.getInt("ID"));
+                    booking.put("property_id", rs.getInt("property_id"));
+                    booking.put("guest_id", rs.getInt("guest_id"));
+                    booking.put("booking_start", rs.getDate("Booking_start").toLocalDate());
+                    booking.put("booking_end", rs.getDate("Booking_end").toLocalDate());
+                    booking.put("booking_price", rs.getBigDecimal("Price"));
+                    bookings.add(booking);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error calling stored procedure GetBookingsByPropertyId", e);
+        }
+
+        return bookings;
+    }
 
 
 

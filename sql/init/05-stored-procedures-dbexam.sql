@@ -20,6 +20,15 @@ BEGIN
     WHERE p_email = Email;
 END //
 
+
+CREATE PROCEDURE GetUserById(IN p_id INT)
+BEGIN
+SELECT ID, Name, Email, Mobile
+FROM Users
+WHERE ID = p_id;
+END //
+
+
 CREATE PROCEDURE UpdateUser(
     IN p_user_id INT,
     IN p_name VARCHAR(255),
@@ -136,6 +145,19 @@ CREATE PROCEDURE GetBooking(
 
 BEGIN
     SELECT * FROM Bookings WHERE ID = p_booking_id;
+END //
+
+CREATE PROCEDURE GetBookingsByGuestId(IN p_guest_id INT)
+BEGIN
+SELECT
+    ID AS booking_id,
+    Property_ID AS property_id,
+    Guest_ID AS guest_id,
+    Booking_start,
+    Booking_end,
+    Price AS booking_price
+FROM Bookings
+WHERE Guest_ID = p_guest_id;
 END //
 
 CREATE PROCEDURE AddBooking(

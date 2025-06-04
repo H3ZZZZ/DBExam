@@ -83,6 +83,31 @@ public class UserService {
         }
     }
 
+    public UserDTO getUserById(int userId) {
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL GetUserById(?)}")) {
+
+            stmt.setInt(1, userId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    UserDTO user = new UserDTO();
+                    user.setId(rs.getInt("ID"));
+                    user.setName(rs.getString("Name"));
+                    user.setEmail(rs.getString("Email"));
+                    user.setMobile(rs.getString("Mobile"));
+                    return user;
+                } else {
+                    return null;
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure GetUserById", e);
+        }
+    }
+
+
 
 
 }

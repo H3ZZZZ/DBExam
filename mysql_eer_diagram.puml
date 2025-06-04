@@ -1,0 +1,118 @@
+@startuml MySQL_EER_Diagram
+
+title Airbnb Analytics Platform - MySQL Database EER Diagram
+
+entity Users {
+  * ID : INT <<PK, AUTO_INCREMENT>>
+  --
+  * Name : VARCHAR(255)
+  * Email : VARCHAR(255) <<UNIQUE>>
+  Mobile : VARCHAR(20)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity Properties {
+  * ID : INT <<PK, AUTO_INCREMENT>>
+  --
+  * Host_ID : INT <<FK>>
+  * Price : DECIMAL(10,2)
+  * Room_type : VARCHAR(100)
+  * Person_capacity : INT
+  Bedrooms : INT
+  Center_distance : DECIMAL(5,2)
+  Metro_distance : DECIMAL(5,2)
+  * City : VARCHAR(100)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity Bookings {
+  * ID : INT <<PK, AUTO_INCREMENT>>
+  --
+  * Property_ID : INT <<FK>>
+  * Guest_ID : INT <<FK>>
+  * Price : DECIMAL(10,2)
+  * Booking_start : DATE
+  * Booking_end : DATE
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Users ||--o{ Properties : hosts
+Properties ||--o{ Bookings : receives
+Users ||--o{ Bookings : makes
+
+note top of Users
+**Users Table:**
+• Can be both hosts and guests
+• Email is unique identifier
+• Auto-timestamps for audit trail
+
+**Indexes:**
+• PRIMARY KEY (ID)
+• UNIQUE INDEX idx_email (Email)
+
+**Foreign Key Relationships:**
+• Referenced by Properties.Host_ID
+• Referenced by Bookings.Guest_ID
+end note
+
+note top of Properties
+**Properties Table:**
+• Each property owned by one host
+• Multiple bookings possible per property
+• Price stored as DECIMAL for precision
+
+**Indexes:**
+• PRIMARY KEY (ID)
+• INDEX idx_price (Price)
+• INDEX idx_city (City) 
+• INDEX idx_host (Host_ID)
+
+**Constraints:**
+• FOREIGN KEY Host_ID → Users.ID CASCADE
+end note
+
+note top of Bookings
+**Bookings Table:**
+• Links guests to properties
+• Date range validation enforced
+• Price calculated based on duration
+
+**Indexes:**
+• PRIMARY KEY (ID)
+• Implicit indexes on foreign keys
+
+**Constraints:**
+• FOREIGN KEY Property_ID → Properties.ID CASCADE
+• FOREIGN KEY Guest_ID → Users.ID CASCADE
+end note
+
+note bottom of Users
+**MySQL Stored Procedures:**
+• AddUser(name, email, mobile)
+• GetUser(user_id)
+• UpdateUser(user_id, name, email, mobile)
+• DeleteUser(user_id)
+end note
+
+note bottom of Properties
+**MySQL Stored Procedures:**
+• AddProperty(host_id, price, room_type, ...)
+• GetProperty(property_id)
+• UpdateProperty(property_id, ...)
+• DeleteProperty(property_id)
+end note
+
+note bottom of Bookings
+**MySQL Stored Procedures:**
+• AddBooking(property_id, guest_id, start, end)
+• GetBooking(booking_id)
+• UpdateBooking(booking_id, ...)
+• DeleteBooking(booking_id)
+• ValidateBookingExists(booking_id, property_id)
+• IsBookingCompleted(booking_id)
+end note
+
+@enduml 

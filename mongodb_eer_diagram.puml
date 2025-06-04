@@ -1,0 +1,98 @@
+@startuml MongoDB_EER_Diagram
+
+title Airbnb Analytics Platform - MongoDB Database EER Diagram
+
+entity reviews {
+  * _id : ObjectId <<generated>>
+  --
+  * property_id : Number
+  * booking_id : Number  
+  * cleanliness_rating : Number
+  * guest_satisfaction : Number
+  * text_comment : String
+  * created_at : Date
+}
+
+entity property_ratings {
+  * _id : ObjectId <<generated>>
+  --
+  * property_id : Number <<unique>>
+  * avg_cleanliness_rating : Number
+  * avg_satisfaction_rating : Number
+  * total_reviews : Number
+  * last_updated : Date
+  * created_at : Date
+}
+
+reviews ||--|| property_ratings : aggregates
+
+note top of reviews
+**Cross-Database Integration:**
+• property_id → MySQL Properties.ID
+• booking_id → MySQL Bookings.ID
+• Reviews only for completed bookings
+• Guest info via MySQL stored procedures
+
+**Indexes:**
+• property_id, booking_id, cleanliness_rating
+• guest_satisfaction, created_at
+
+**Sample Document:**
+{
+  "_id": ObjectId("..."),
+  "property_id": 140,
+  "booking_id": 1,
+  "cleanliness_rating": 85,
+  "guest_satisfaction": 92,
+  "text_comment": "Excellent property...",
+  "created_at": ISODate("2024-11-06")
+}
+end note
+
+note top of property_ratings
+**Aggregated Collection:**
+• Calculated from reviews using pipeline
+• Auto-updated when reviews change
+• Fast property rating lookups
+
+**Indexes:**
+• property_id (unique)
+• avg_satisfaction_rating, avg_cleanliness_rating
+• total_reviews (all descending)
+
+**Sample Document:**
+{
+  "_id": ObjectId("..."),
+  "property_id": 140,
+  "avg_cleanliness_rating": 87.5,
+  "avg_satisfaction_rating": 89.2,
+  "total_reviews": 4,
+  "last_updated": ISODate("2024-11-06")
+}
+end note
+
+note bottom of property_ratings
+**MongoDB Aggregation Pipeline:**
+```javascript
+db.reviews.aggregate([
+  { $group: {
+      _id: "$property_id",
+      avg_cleanliness_rating: { $avg: "$cleanliness_rating" },
+      avg_satisfaction_rating: { $avg: "$guest_satisfaction" },
+      total_reviews: { $sum: 1 }
+    }},
+  { $project: { property_id: "$_id", ... }}
+])
+```
+end note
+
+note bottom of reviews
+**MongoDB Replica Set (rs0):**
+• mongo1:27017 (PRIMARY)
+• mongo2:27017 (SECONDARY) 
+• mongo3:27017 (SECONDARY)
+• Automatic failover enabled
+• Write concern: w:1, j:false
+end note
+
+@enduml 

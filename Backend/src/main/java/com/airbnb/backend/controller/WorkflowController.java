@@ -36,7 +36,7 @@ public class WorkflowController {
             // Step 1: MySQL stored procedure validation - check booking exists and matches property
             boolean bookingValid = reviewService.validateBookingExists(bookingId, propertyId);
             if (!bookingValid) {
-                Map<String, Object> response = new LinkedHashMap<>();
+                Map<String, Object> response = new LinkedHashMap<>();   
                 response.put("success", false);
                 response.put("property_id", propertyId);
                 response.put("booking_id", bookingId);

@@ -3,6 +3,7 @@ package com.airbnb.backend.controller;
 import com.airbnb.backend.dto.UserDTO;
 import com.airbnb.backend.dto.UserUpdateDTO;
 import com.airbnb.backend.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
+@Tag(name = "User Controller", description = "API for managing users")
 public class UserController {
 
     private final UserService userService;

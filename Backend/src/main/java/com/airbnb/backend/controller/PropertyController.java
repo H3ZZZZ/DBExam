@@ -4,6 +4,7 @@ import com.airbnb.backend.dto.PropertyCreateDTO;
 import com.airbnb.backend.dto.PropertyDTO;
 import com.airbnb.backend.dto.PropertyUpdateDTO;
 import com.airbnb.backend.service.PropertyService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/properties")
+@Tag(name = "Property Controller", description = "API for managing properties")
 public class PropertyController {
 
     private final PropertyService propertyService;

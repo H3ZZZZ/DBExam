@@ -4,6 +4,7 @@ import com.airbnb.backend.dto.BookingCreateDTO;
 import com.airbnb.backend.dto.BookingDTO;
 import com.airbnb.backend.dto.BookingUpdateDTO;
 import com.airbnb.backend.service.BookingService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/bookings")
+@Tag(name = "Booking Controller", description = "API for managing bookings")
 public class BookingController {
 
     private final BookingService bookingService;

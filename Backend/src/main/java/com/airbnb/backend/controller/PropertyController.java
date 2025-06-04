@@ -7,6 +7,8 @@ import com.airbnb.backend.service.PropertyService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/properties")
 public class PropertyController {
@@ -37,6 +39,12 @@ public class PropertyController {
         PropertyDTO property = propertyService.getPropertyById(id);
         return ResponseEntity.ok(property);
     }
+
+    @GetMapping
+    public ResponseEntity<List<PropertyDTO>> getAllProperties() {
+        return ResponseEntity.ok(propertyService.getAllProperties());
+    }
+
 
     @PutMapping("/{id}")
     public ResponseEntity<String> updateProperty(@PathVariable int id, @RequestBody PropertyUpdateDTO property) {

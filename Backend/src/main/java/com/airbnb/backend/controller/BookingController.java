@@ -7,6 +7,8 @@ import com.airbnb.backend.service.BookingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/bookings")
 public class BookingController {
@@ -27,6 +29,12 @@ public class BookingController {
         );
         return ResponseEntity.ok("Booking added successfully");
     }
+
+    @GetMapping
+    public ResponseEntity<List<BookingDTO>> getAllBookings() {
+        return ResponseEntity.ok(bookingService.getAllBookings());
+    }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<BookingDTO> getBookingById(@PathVariable int id) {

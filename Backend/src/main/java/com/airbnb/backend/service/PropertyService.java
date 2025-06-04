@@ -11,6 +11,7 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +69,36 @@ public class PropertyService {
             throw new RuntimeException("Error calling stored procedure GetProperty", e);
         }
     }
+
+    public List<PropertyDTO> getAllProperties() {
+        List<PropertyDTO> properties = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             CallableStatement stmt = conn.prepareCall("{CALL GetAllProperties()}")) {
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    PropertyDTO property = new PropertyDTO();
+                    property.setId(rs.getInt("ID"));
+                    property.setHostId(rs.getInt("Host_ID"));
+                    property.setPrice(rs.getBigDecimal("Price"));
+                    property.setRoomType(rs.getString("Room_type"));
+                    property.setPersonCapacity(rs.getInt("Person_capacity"));
+                    property.setBedrooms(rs.getObject("Bedrooms") != null ? rs.getInt("Bedrooms") : null);
+                    property.setCenterDistance(rs.getBigDecimal("Center_distance"));
+                    property.setMetroDistance(rs.getBigDecimal("Metro_distance"));
+                    property.setCity(rs.getString("City"));
+                    properties.add(property);
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error calling stored procedure GetAllProperties", e);
+        }
+
+        return properties;
+    }
+
 
     public void updateProperty(int propertyId, PropertyUpdateDTO property) {
         try (Connection conn = dataSource.getConnection();

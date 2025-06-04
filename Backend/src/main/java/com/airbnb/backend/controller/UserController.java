@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -21,6 +23,11 @@ public class UserController {
     public ResponseEntity<String> addUser(@RequestBody UserUpdateDTO user) {
         userService.addUser(user.getName(), user.getEmail(), user.getMobile());
         return ResponseEntity.ok("User added successfully");
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
     }
 
     @GetMapping("/{email}")

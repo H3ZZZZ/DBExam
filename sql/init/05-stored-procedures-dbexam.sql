@@ -28,6 +28,11 @@ FROM Users
 WHERE ID = p_id;
 END //
 
+CREATE PROCEDURE GetAllUsers()
+BEGIN
+SELECT ID, Name, Email, Mobile FROM Users;
+END //
+
 
 CREATE PROCEDURE UpdateUser(
     IN p_user_id INT,
@@ -94,6 +99,13 @@ BEGIN
     SELECT * FROM Properties WHERE ID = p_property_id;
 END //
 
+CREATE PROCEDURE GetAllProperties()
+BEGIN
+SELECT ID, Host_ID, Price, Room_type, Person_capacity, Bedrooms,
+       Center_distance, Metro_distance, City
+FROM Properties;
+END //
+
 CREATE PROCEDURE GetPropertiesByHostId(IN p_host_id INT)
 BEGIN
 SELECT * FROM Properties WHERE Host_ID = p_host_id;
@@ -150,6 +162,12 @@ CREATE PROCEDURE GetBooking(
 
 BEGIN
     SELECT * FROM Bookings WHERE ID = p_booking_id;
+END //
+
+CREATE PROCEDURE GetAllBookings()
+BEGIN
+SELECT ID, Property_ID, Guest_ID, Price, Booking_start, Booking_end
+FROM Bookings;
 END //
 
 CREATE PROCEDURE GetBookingsByPropertyId(IN p_property_id INT)

@@ -64,18 +64,13 @@ public class PropertyRatingService {
         Map<String, Object> result = getPropertyRating(propertyId);
         
         if (result != null && Boolean.TRUE.equals(result.get("success"))) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) result.get("data");
-            
-            if (data != null) {
-                return String.format(
-                    "Property %d: Cleanliness %.2f, Satisfaction %.2f (based on %d reviews)",
-                    propertyId,
-                    getNumberValue(data.get("avg_cleanliness_rating")),
-                    getNumberValue(data.get("avg_satisfaction_rating")),
-                    getNumberValue(data.get("total_reviews")).intValue()
-                );
-            }
+            return String.format(
+                "Property %d: Cleanliness %.2f, Satisfaction %.2f (based on %d reviews)",
+                propertyId,
+                getNumberValue(result.get("avg_cleanliness_rating")).doubleValue(),
+                getNumberValue(result.get("avg_satisfaction_rating")).doubleValue(),
+                getNumberValue(result.get("total_reviews")).intValue()
+            );
         }
         
         return result != null && result.containsKey("message") ? 
@@ -86,6 +81,12 @@ public class PropertyRatingService {
     private Number getNumberValue(Object value) {
         if (value instanceof Number) {
             return (Number) value;
+        } else if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
         }
         return 0;
     }

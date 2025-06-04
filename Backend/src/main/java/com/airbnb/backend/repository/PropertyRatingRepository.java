@@ -140,8 +140,23 @@ public class PropertyRatingRepository {
                 Map<String, Object> response = new LinkedHashMap<>();
                 response.put("success", true);
                 response.put("property_id", propertyId);
-                response.put("avg_cleanliness_rating", rating.getDouble("avg_cleanliness_rating"));
-                response.put("avg_satisfaction_rating", rating.getDouble("avg_satisfaction_rating"));
+                
+                // Safely convert cleanliness rating to Double regardless of original type
+                Object cleanlinessRating = rating.get("avg_cleanliness_rating");
+                if (cleanlinessRating instanceof Integer) {
+                    response.put("avg_cleanliness_rating", ((Integer) cleanlinessRating).doubleValue());
+                } else {
+                    response.put("avg_cleanliness_rating", rating.getDouble("avg_cleanliness_rating"));
+                }
+                
+                // Safely convert satisfaction rating to Double regardless of original type
+                Object satisfactionRating = rating.get("avg_satisfaction_rating");
+                if (satisfactionRating instanceof Integer) {
+                    response.put("avg_satisfaction_rating", ((Integer) satisfactionRating).doubleValue());
+                } else {
+                    response.put("avg_satisfaction_rating", rating.getDouble("avg_satisfaction_rating"));
+                }
+                
                 response.put("total_reviews", rating.getInteger("total_reviews"));
                 response.put("last_updated", rating.getDate("last_updated"));
                 return response;

@@ -180,8 +180,23 @@ END //
 
 CREATE PROCEDURE GetAllBookings()
 BEGIN
-SELECT ID, Property_ID, Guest_ID, Price, Booking_start, Booking_end
-FROM Bookings;
+    SELECT 
+        b.ID as booking_id,
+        b.Property_ID as property_id,
+        b.Guest_ID as guest_id,
+        u.Name as guest_name,
+        b.Booking_start,
+        b.Booking_end,
+        b.Price as booking_price,
+        CASE 
+            WHEN b.Booking_end < CURDATE() THEN 'completed'
+            WHEN b.Booking_start <= CURDATE() AND b.Booking_end >= CURDATE() THEN 'active'
+            ELSE 'upcoming'
+        END as booking_status
+    FROM Bookings b
+    JOIN Users u ON b.Guest_ID = u.ID
+    ORDER BY b.Booking_end DESC
+    LIMIT 20;
 END //
 
 CREATE PROCEDURE GetBookingsByPropertyId(IN p_property_id INT)
@@ -200,6 +215,59 @@ SELECT
     Price AS booking_price
 FROM Bookings
 WHERE Guest_ID = p_guest_id;
+END //
+
+CREATE PROCEDURE GetGuestInfoFromBooking(
+    IN p_booking_id INT
+)
+BEGIN
+    SELECT 
+        b.ID as booking_id,
+        b.Property_ID as property_id,
+        b.Guest_ID as guest_id,
+        u.Name as guest_name,
+        u.Email as guest_email,
+        b.Booking_start,
+        b.Booking_end,
+        b.Price as booking_price,
+        CASE 
+            WHEN b.Booking_end < CURDATE() THEN 'completed'
+            WHEN b.Booking_start <= CURDATE() AND b.Booking_end >= CURDATE() THEN 'active'
+            ELSE 'upcoming'
+        END as booking_status
+    FROM Bookings b
+    JOIN Users u ON b.Guest_ID = u.ID
+    WHERE b.ID = p_booking_id;
+END //
+
+-- Added from 06-booking-stored-procedures.sql
+CREATE PROCEDURE ValidateBookingExists(
+    IN p_booking_id INT,
+    IN p_property_id INT,
+    OUT p_exists BOOLEAN
+)
+BEGIN
+    DECLARE booking_count INT DEFAULT 0;
+    
+    SELECT COUNT(*) INTO booking_count
+    FROM Bookings 
+    WHERE ID = p_booking_id AND Property_ID = p_property_id;
+    
+    SET p_exists = (booking_count > 0);
+END //
+
+CREATE PROCEDURE IsBookingCompleted(
+    IN p_booking_id INT,
+    OUT p_completed BOOLEAN
+)
+BEGIN
+    DECLARE booking_count INT DEFAULT 0;
+    
+    SELECT COUNT(*) INTO booking_count
+    FROM Bookings 
+    WHERE ID = p_booking_id AND Booking_end < CURDATE();
+    
+    SET p_completed = (booking_count > 0);
 END //
 
 CREATE PROCEDURE AddBooking(
@@ -319,9 +387,6 @@ CREATE PROCEDURE DeleteBooking(
 BEGIN
     DELETE FROM Bookings WHERE ID = p_booking_id;
 END //
-
-
-
 
 DELIMITER ;
 -- Users procedures

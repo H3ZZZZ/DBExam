@@ -35,9 +35,10 @@ public class ReviewController {
         return ResponseEntity.ok(result);
     }
     
+    
     @PostMapping("/add")
-    @Operation(summary = "Add a new review with stored procedure validation", 
-               description = "Add a review with comprehensive validation using MySQL stored procedures. Reviews can only be created for completed bookings.")
+    @Operation(summary = "Add review and update property rating", 
+               description = "Add a review with MySQL stored procedure validation and automatically trigger MongoDB aggregation pipeline rating recalculation.")
     public ResponseEntity<Map<String, Object>> addReview(
             @RequestParam Integer propertyId,
             @RequestParam Integer bookingId,
@@ -45,24 +46,6 @@ public class ReviewController {
             @RequestParam Integer satisfactionRating,
             @RequestParam String comment) {
         Map<String, Object> result = reviewService.addReview(propertyId, bookingId, cleanlinessRating, satisfactionRating, comment);
-        
-        if (Boolean.TRUE.equals(result.get("success"))) {
-            return ResponseEntity.ok(result);
-        } else {
-            return ResponseEntity.badRequest().body(result);
-        }
-    }
-    
-    @PostMapping("/add-with-rating-update")
-    @Operation(summary = "Add review and update property rating", 
-               description = "Add a review with MySQL stored procedure validation and automatically trigger MongoDB aggregation pipeline rating recalculation.")
-    public ResponseEntity<Map<String, Object>> addReviewWithRatingUpdate(
-            @RequestParam Integer propertyId,
-            @RequestParam Integer bookingId,
-            @RequestParam Integer cleanlinessRating,
-            @RequestParam Integer satisfactionRating,
-            @RequestParam String comment) {
-        Map<String, Object> result = reviewService.addReviewWithRatingUpdate(propertyId, bookingId, cleanlinessRating, satisfactionRating, comment);
         
         if (Boolean.TRUE.equals(result.get("success"))) {
             return ResponseEntity.ok(result);

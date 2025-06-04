@@ -25,7 +25,7 @@ public class HostDashboardService {
     private ReviewRepository reviewRepository;
 
     public Map<String, Object> getHostDashboard(int hostId) {
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response = new LinkedHashMap<>();
 
         // 1. Host Info (reuse UserService)
         UserDTO host = userService.getUserById(hostId);

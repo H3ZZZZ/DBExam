@@ -40,6 +40,21 @@ public class PropertyController {
         return ResponseEntity.ok(property);
     }
 
+    @GetMapping("/filter")
+    public ResponseEntity<List<PropertyDTO>> getFilteredProperties(
+            @RequestParam String city,
+            @RequestParam int price,
+            @RequestParam int capacity,
+            @RequestParam float cityDistance,
+            @RequestParam float metroDistance) {
+
+        List<PropertyDTO> filteredProperties = propertyService.getFilteredProperties(
+                city, price, capacity, cityDistance, metroDistance);
+
+        return ResponseEntity.ok(filteredProperties);
+    }
+
+
     @GetMapping
     public ResponseEntity<List<PropertyDTO>> getAllProperties() {
         return ResponseEntity.ok(propertyService.getAllProperties());

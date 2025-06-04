@@ -333,6 +333,7 @@ DELIMITER ;
 -- Properties procedures
 -- CALL AddProperty(3,150.00,'Entire apartment',4,2,1.25,0.75,'Copenhagen');
 -- CALL GetProperty(1);
+-- CALL GetFilteredProperties('Amsterdam', 350, 3, 3.2, 2.8);
 -- CALL UpdateProperty(1, null, null, 4, null, null, null, null);
 -- CALL DeleteProperty(3);
 

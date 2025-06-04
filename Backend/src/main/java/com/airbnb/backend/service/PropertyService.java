@@ -11,7 +11,7 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -110,7 +110,7 @@ public class PropertyService {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> property = new HashMap<>();
+                    Map<String, Object> property = new LinkedHashMap<>();
                     property.put("id", rs.getInt("ID"));
                     property.put("host_id", rs.getInt("Host_ID"));
                     property.put("price", rs.getBigDecimal("Price"));

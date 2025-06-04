@@ -295,7 +295,7 @@ public class ReviewRepository {
         List<org.bson.Document> documents = mongoTemplate.find(query, org.bson.Document.class, "reviews");
 
         return documents.stream()
-                .map(doc -> (Map<String, Object>) new HashMap<>(doc)) // Cast to Map explicitly
+                .map(doc -> (Map<String, Object>) new LinkedHashMap<>(doc)) // Cast to Map explicitly
                 .toList();
     }
 
@@ -305,7 +305,7 @@ public class ReviewRepository {
 
         // Convert Document to Map<String, Object>
         return rawResults.stream()
-                .map(doc -> new HashMap<String, Object>(doc))
+                .map(doc -> new LinkedHashMap<String, Object>(doc))
                 .collect(Collectors.toList());
     }
 

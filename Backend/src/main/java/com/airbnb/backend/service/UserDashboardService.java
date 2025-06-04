@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +25,7 @@ public class UserDashboardService {
     private ReviewRepository reviewRepository;
 
     public Map<String, Object> getUserDashboard(int userId) {
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response = new LinkedHashMap<>();
 
         // 1. User Info
         UserDTO user = userService.getUserById(userId); // You might need to implement getUserById

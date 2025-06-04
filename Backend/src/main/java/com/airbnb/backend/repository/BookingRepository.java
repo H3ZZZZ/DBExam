@@ -9,7 +9,9 @@ import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Repository
@@ -181,7 +183,7 @@ public class BookingRepository {
 
             try (var rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> booking = new HashMap<>();
+                    Map<String, Object> booking = new LinkedHashMap<>();
                     booking.put("booking_id", rs.getInt("booking_id"));
                     booking.put("property_id", rs.getInt("property_id"));
                     booking.put("guest_id", rs.getInt("guest_id"));
@@ -209,7 +211,7 @@ public class BookingRepository {
 
             try (var rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    Map<String, Object> booking = new HashMap<>();
+                    Map<String, Object> booking = new LinkedHashMap<>();
                     booking.put("booking_id", rs.getInt("ID"));
                     booking.put("property_id", rs.getInt("property_id"));
                     booking.put("guest_id", rs.getInt("guest_id"));
@@ -225,7 +227,5 @@ public class BookingRepository {
 
         return bookings;
     }
-
-
 
 } 

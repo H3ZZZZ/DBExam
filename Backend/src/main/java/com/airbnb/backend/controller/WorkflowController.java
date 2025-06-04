@@ -26,8 +26,8 @@ public class WorkflowController {
     @Operation(summary = "Complete booking workflow with review and rating update", 
                description = "Demonstrates: User books property → Booking ends → User reviews → Property ratings updated via cross-database transformation")
     public ResponseEntity<Map<String, Object>> completeBookingReview(
-            @RequestParam Integer propertyId,
             @RequestParam Integer bookingId,
+            @RequestParam Integer propertyId,
             @RequestParam Integer cleanlinessRating,
             @RequestParam Integer satisfactionRating,
             @RequestParam String comment) {

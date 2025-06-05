@@ -43,10 +43,9 @@ public class PropertyDetailsService {
 
         // Set rating data
         if (ratingResult != null && Boolean.TRUE.equals(ratingResult.get("success"))) {
-            Map<String, Object> data = (Map<String, Object>) ratingResult.get("data");
-            dto.setAvgCleanlinessRating(((Number) data.get("avg_cleanliness_rating")).doubleValue());
-            dto.setAvgSatisfactionRating(((Number) data.get("avg_satisfaction_rating")).doubleValue());
-            dto.setTotalReviews(((Number) data.get("total_reviews")).intValue());
+            dto.setAvgCleanlinessRating(((Number) ratingResult.get("avg_cleanliness_rating")).doubleValue());
+            dto.setAvgSatisfactionRating(((Number) ratingResult.get("avg_satisfaction_rating")).doubleValue());
+            dto.setTotalReviews(((Number) ratingResult.get("total_reviews")).intValue());
         }
 
         // Set reviews

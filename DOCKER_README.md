@@ -29,6 +29,7 @@ The Docker setup includes:
 - Ports 3306, 8080, 8081, 8082, 27017-27019 available
 
 ### 1. Start the Complete Stack
+Open a terminal in the root of the project and run either:
 ```bash
 # Build and start all services
 docker-compose up --build
